@@ -1,0 +1,152 @@
+---
+title: "Exploratory analysis on conventional bulk RNA-seq from PHD2 in atherogenesis"
+author: "Javier Perales-Paton - javier.perales@bioquant.uni-heidelberg.de" 
+---
+
+Transcriptome profiling with conventional RNAseq was performed in three replicates of macrophages 
+carrying PHD2 knock-out (with wildtype) and fibroblasts co-cultured with supernadant of these 
+macrophages (as compared to supernadant of the wiltype genotype). Herein we perform an exploratory
+analysis on these settings.
+
+## Setting-up environment
+The environment will be set with a random seed number for reproducibility and an output folder
+for processed data and figures.
+
+### set env
+```{r env}
+options(stringsAsFactors = FALSE)
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./output/00_exploratory"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+```
+
+### Load libraries
+```{r}
+library(edgeR)
+library(limma)
+library(fgsea)
+library(GSEABase)
+library(dendextend)
+```
+
+## Load data and normalize
+```{r}
+### 1 Load data
+cnt <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-rawdata.txt", sep="\t", header = TRUE, check.names = FALSE)
+rownames(cnt) <- cnt[,1]
+cnt <- cnt[,-1]
+
+targets <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-metadata.txt", sep="\t",header=TRUE, colClasses = "character")
+targets$Sample <- gsub(" ","_",targets$Sample)
+
+# Rename samples
+stopifnot(all(colnames(cnt)==targets$FastQ))
+colnames(cnt) <- targets$Sample
+
+# Create metadata
+stopifnot(all(colnames(cnt)==targets$Sample))
+gr <- targets$Group
+gt <- factor(gsub("^(3T3|MΦ)_", "", targets$Group), levels=c(c("PHD2_WT", "PHD2_KO")))
+cell <- factor(unlist(sapply(targets$Group, function(z) strsplit(z, split="_")[[1]][1])))
+repl <- factor(targets$Replicate)
+
+## 2 Create DGElist
+y <- DGEList(counts = cnt, group = gr, genes = rownames(cnt))
+y <- calcNormFactors(y, method = "TMM")
+```
+
+## Diagnostics
+### The library size
+```{r}
+par(mar=c(10,8,4,4)); 
+barplot(y$samples$lib.size,names.arg = rownames(y$samples), las=2)
+```
+
+### Principal Component analysis
+First we start with the definition of ad-hoc handle functions.
+```{r}
+# Define some functions
+runPCA <- function(mat) {
+  pca <- prcomp(t(mat))
+  
+  return(pca)
+}
+
+plotPCA <- function(pca, dims, pchs, cols, labels=NULL) {
+  importance <- summary(pca)$importance[,dims]
+  PCscores <- data.frame(pca$x)[,dims]
+  
+  plot(PCscores,las=1,
+       pch=pchs,bg=cols,
+       xlab=paste0(dims[1]," : ",format(round(importance[2,dims[1]]*100,digits = 2),nsmall = 2),"% var expl."),
+       ylab=paste0(dims[2]," : ",format(round(importance[2,dims[2]]*100,digits = 2),nsmall = 2),"% var expl."))
+  if(!is.null(labels)) {
+    par(xpd=TRUE)
+    text(x=PCscores[,dims[1]], y=PCscores[,dims[2]], labels=labels, pos=1)
+  }
+}
+
+```
+
+Then we run PCA and visualize it
+```{r pca, dpi=300, fig.width=7, fig.height=5, fig.path="./output/00_exploratory/", dev=c('png', 'tiff')}
+
+# Run PCA
+pca <- runPCA(mat = cpm(y, log = TRUE))
+
+# Visualize
+ #plot(PC2 ~ PC1, data=data.frame(pca$x),pch=c(21,23)[as.integer(cell)],bg=as.integer(gt))
+ #par(xpd=TRUE); text(x = pca$x[,1], y=pca$x[,2], labels = targets$Replicate, pos = 2)
+
+par(mar=c(4,4,4,12), xpd=TRUE)
+plotPCA(pca=runPCA(mat = cpm(y, log = TRUE)),
+        dims=c("PC1","PC2"),
+        pchs=c(21,23)[as.integer(cell)], cols=as.integer(gt))
+legend("right",legend = levels(cell), pch=c(21,23), 
+       inset = c(-0.3,0), title = "Cell type")
+legend("topright",legend = levels(gt), pch=c(22),pt.bg = c("black","red"), 
+       inset = c(-0.4,0), title = "Perturbation")
+
+# Which is
+PC1_loadings <- sort(abs(pca$rotation[,"PC1"]),decreasing = TRUE)
+GSC <- getGmt("../data/MSigDB/h.all.v6.2.symbols.gmt")
+res <- fgsea(pathways = geneIds(GSC), stats = setNames(PC1_loadings, toupper(names(PC1_loadings))), nperm = 1000)
+res <- res[order(res$padj,decreasing = FALSE),]
+
+options(digits=2)
+print(res[, 1:5])
+```
+
+We could conclude that PHD2 perturbation is the main factor of variability in the experiment.
+Moreover, It seems Hypoxia response is involved in this separation. 
+This makes sense given the knowledge on the role of PHD2.
+
+### Hierchical clustering
+
+```{r hc, dpi=300, fig.width=6, fig.height=7, fig.path="./output/00_exploratory/", dev=c('png','tiff')}
+cpm_norm <- cpm(y,log=TRUE)
+rowise_var <- apply(cpm_norm,1,var)
+genes_qt75 <- names(rowise_var[rowise_var>= quantile(rowise_var, 0.90)])
+cpm_transform <- sweep(cpm_norm, 1, apply(cpm_norm, 1, median, na.rm=T))
+
+d <- dist(t(cpm_transform[genes_qt75, ]))
+hc <- hclust(d, method = "complete")
+dend <- as.dendrogram(hc)
+
+# Color the branches based on the clusters:
+dend <- color_branches(dend, k=2) 
+dend <- assign_values_to_branches_edgePar(dend=dend, value=c(1.5,1.5), edgePar="lwd")
+
+# plot(dend, las=1, ylab="height")
+
+# Manually match the labels, as much as possible, to the real classification of the flowers:
+labels_colors(dend) <- as.integer(factor(setNames(gt, 
+						  targets$Sample)[labels(dend)]))
+
+par(mar=c(8,5,4,4))
+plot(dend, las=1, ylab="", cex.axis=1.5)
+title(ylab="height", cex.lab=1.5, line=+3.7)
+```
+

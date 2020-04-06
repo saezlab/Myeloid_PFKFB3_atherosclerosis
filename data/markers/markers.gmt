@@ -1,0 +1,11 @@
+Mesenchyme_fib	> Sluimer	Col1a1	Col1a2	Pdgfra	Gli1	Lum	Dcn	Mmp2
+Healthy_Mesenchyme_fib	> Sluimer	Smoc2	Dpep1	Fbln1	Ccl11	Col14a1
+Myofibroblast/SMC	> Sluimer	Myh11	Acta2	Tagln	Des	Smtn	Cnn1
+EC	> Sluimer	Pecam1	F8	Icam2	Cdh5	Vcam1
+Stem cells	> Sluimer	Ly6c1	Ly6c2	Lin28a	Kit	Cd34
+macrophage	> Sluimer	Cd68	Lgals3	Marco	Adgre1	Cx3cr1
+Adipocyte	> Sluimer	Fabp4	Adipoq	Lep	Dlk1	Dlk2	Adipor1	Adipor2	Ucp1
+Pericyte	> Sluimer	Rgs5	Cspg4
+Neuronal markers	> Sluimer	Dcx	Map2	Eno2	Calb2	Rbfox3	Th
+T-cells	> Sluimer	Cd3d	Cd4
+B-cells	> Sluimer	Ptprc

@@ -1,0 +1,8 @@
+Immune	> Consensus plaque	Ptprc
+Mac-DC-Neutro	> Consensus plaque	Lyz2	Cd68	C1qa	C1qb	C1qc
+M1Mac	> Consensus adventia	Ms4a6c	Gngt2	Adgre1
+M2Mac	> Consensus adventia	Folr2	Mrc1	Cbr2	Pf4	Selenop
+EC	> Consensus adventia	Pecam1	Cdh5
+Epithelial-like	> Consensus adventia	Krt19	Lgals7	Cd82	Upk3b	Fxyd3	Msln	Krt19	Upk1b	Krt7	Krt8	Wfdc2	Wt1	Chst4
+B-cell	> Consensus adventia	Cd79a	Cd19
+T-cell	> Consensus adventia	Cd3d

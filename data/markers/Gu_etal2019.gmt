@@ -1,0 +1,14 @@
+Immune	> Gu et al. 2019 - 	Ptprc
+NonImmune	> Gu et al. 2019 - 	Col3a1	Col14a1
+Monocytes-Macrophages	> Gu et al. 2019 -  clusters:4,7,8,14	Cd14	Cepb
+Inflamatory_Macrophages	> GURY, Pro-inflamatory macrophages, cluster:7	Ms4a6c	Gngt2	Lgals3	Adgre1	F13a1
+M2_Macrophages	> Gu et al. 2019 - , resident Macrophages. cluster:14	Folr2	Mrc1	Cbr2	Pf4	Sepp1	C1qa
+B-cell	> Gu et al. 2019 -  clusters:1,10,11	Cd79a	Cd19
+T-cell	> Gu et al. 2019 -  clusters:2,12,13	Cd3d
+ILC	> Gu et al. 2019 - , Innate lymphoid cells	Il1rl1	Gata3
+NK	> Gu et al. 2019 - , Natural Killers	Gzma	Gzmb	Klrb1c
+DC	> Gu et al. 2019 - , Dendritic cell	Flt3	Zbtb36	Itgax
+Non-immune	> Gu et al. 2019 - , clusters:3,5,15	Ly6a	Cd34
+SMC	> Gu et al. 2019 - , cluster:15	Tagln
+EC	> Gu et al. 2019 - , cluster:15	Pecam1
+Eryth	> Gu et al. 2019 - , cluster:9	Gypa	Snca

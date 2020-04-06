@@ -1,0 +1,13 @@
+CD8_Tcell	> Cochain et al. Top10	Ccl5	Nkg7	Ctsw	Gzmk	Cd3d	Hcst	Cd3g	Cd8b	Gimap4	Fasl
+MoDC	> Cochain et al. Top10	Syngr2	Cd74	Cd209a	Ifi30	Gm2a	H2-Aa	H2-Eb1	H2-Ab1	Flt3	H2-DMb1	Plbd1
+ResLike-Macrophage	> Cochain et al. Top10	C1qb	C1qa	Sepp1	C1qc	Pf4	Ctsc	Lyz2	Trf	Csf1r	Fcgrt
+Inflammatory-Macrophage	> Cochain et al. top10	C1qb	C1qa	Nfkbiz	C1qc	Cxcl2	Cd83	Socs3	Egr1	Zfp36	Atf3
+Bcell	> Cochain et al. top10	Cd79a	Ebf1	Cd79b	H2-DMb2	Ms4a1	H2-Ob	Ly6d	Gm4303	Fcmr	Mef2c	Mzb1
+Monocytes	> Cochain et al. top20	Psap	Lgals3	Cstb	F10	Rnh1	Plin2	Msrb1	Lilrb4a	Tgfbi	Osm
+Mixed_Tcell1	> Cochain et al. top10	Lef1	Tmsb10	Rpl12	Gm8730	Gm9493	Dapl1	Gm10073	Cd3g	Lck	Tcf7
+Mixed_Tcell2	> Cochain et al. top10	Dntt	Hmgb1	Satb1	Tcf7	Arpp21	Ldhb	Endou	Aqp11	Rmnd5a	Cyb5a
+CXCR6_Tcell	> Cochain et al. top10	Actn2	Cxcf6	Cd163l1	F2r	Il7r	Kcnk1	Blk	Tmem176a	S100a10
+Mixed_MastCell	> Cochain et al. top10	Furin	Lmo4	Gata3	Il1rl1	Tnfrsf18	Arg1	Rnf128	Nfkb1	Klrg1
+TREM_high-Macrophage	> Cochain et al. top10	Trem2	C1qb	Anxa5	Hexb	Cd9	Ctsb	Cd63	Lgals3	Igf1	C1qc
+Neutrophils	> Cochain et al. top10	S100a8	S100a9	Retnlg	Ngp	Camp	Pglyrp1	Lcn2	Prdx5	Hdc	Mmp9
+NKcells	> Cochain et al. top10	Klrb1c	Ncr1	Klre1	Klra9	AW112010	Klrk1	Klri2	Gzma	Klra7	Il2rb

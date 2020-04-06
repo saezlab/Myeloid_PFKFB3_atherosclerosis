@@ -1,0 +1,67 @@
+---
+title: "Inference of TF activities in Mieloid PHD2 deficiency in atherogenesis"
+author: "Javier Perales-Paton - javier.perales@bioquant.uni-heidelberg.de"
+output: github_document
+---
+
+## Set-up environment
+
+```{r}
+set.seed(1234)
+outdir <- "./output/04_TF/"
+if(!dir.exists(outdir)) dir.create(outdir, recursive = TRUE)
+```
+
+## Load libraries
+
+```{r}
+library(limma)
+library(progeny)
+```
+
+## Load data
+
+We use the output from previous step, 01 differential expression.
+
+```{r}
+eBay <- readRDS("./output/01_bulk_dge/eBay.rds")
+```
+
+## PROGENy analysis
+
+```{r}
+source("../src/runProgenyFast.R")
+progeny.mat <- read.table("../data/Prior/progeny_matrix_mouse_v1.txt",sep=",",header=TRUE)
+df <- data.frame(ID=rownames(eBay$t),
+                 Fib_PHD2=eBay$t[,"Fib_PHD2"],
+                 MC_PHD2=eBay$t[,"MC_PHD2"])
+
+set.seed(1234)
+progeny.res <- runProgenyFast(df, progeny.mat)
+pvals <- apply(progeny.res, 2, function(z) pnorm(z))
+pvals <- apply(pvals, c(1,2), function(pval) ifelse(pval > 0.5, (1-pval)*2, pval*2))
+colnames(pvals) <- colnames(progeny.res)
+
+for(tag in names(progeny.res)) {
+    # Make a simple table with the outcome
+    progeny.cont <- cbind(Activity=progeny.res[,tag],Pvalue=pvals[,tag])
+    # Show in stdout
+    cat(paste("Pathway activity from",tag,"\n"), file=stdout())
+    print(progeny.cont)
+    # Save if as a supplementary table in a file
+  write.table(progeny.cont,
+              file = paste0(outdir,"/",tag,"_progeny.tsv"),
+              sep="\t", col.names = NA, row.names = TRUE)
+}
+```
+It seems that hypoxia is highly active in Macrophages upon PHD2-KO
+(z-score=14.85, pval\<0.0001). Thus we make a visualization of this
+activation for Figure 3E in the manuscript.
+
+```{r macrophages_hypoxia, fig.width=8, fig.height=6, dpi=300, fig.path="./output/02_bulk_paths/", dev=c('png', 'tiff')}
+source("../src/progenyScores.R")
+source("../src/graphics.R")
+progeny_scatter.out <- progenyScatter(df, progeny.mat, fontfamily=fontTXT)
+
+plot(progeny_scatter.out[[2]]$Hypoxia)
+```

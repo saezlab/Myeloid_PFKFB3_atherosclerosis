@@ -1,6 +1,7 @@
 ---
 title: "Exploratory analysis on conventional bulk RNA-seq from PHD2 in atherogenesis"
 author: "Javier Perales-Paton - javier.perales@bioquant.uni-heidelberg.de" 
+output: github_document
 ---
 
 Transcriptome profiling with conventional RNAseq was performed in three replicates of macrophages 

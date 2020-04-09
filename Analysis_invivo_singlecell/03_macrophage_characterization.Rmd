@@ -1,0 +1,361 @@
+---
+title: "Investigation of the role of PHD2 in-vivo atherogenesis in Macrophages"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries
+```{r}
+suppressPackageStartupMessages(require(Seurat))
+suppressPackageStartupMessages(require(GSEABase))
+suppressPackageStartupMessages(require(cowplot))
+suppressPackageStartupMessages(require(genesorteR))
+suppressPackageStartupMessages(require(fgsea))
+suppressPackageStartupMessages(require(ggplot2))
+suppressPackageStartupMessages(require(ggrepel))
+suppressPackageStartupMessages(require(AUCell))
+suppressPackageStartupMessages(require(viper))
+suppressPackageStartupMessages(require(purrr))
+suppressPackageStartupMessages(require(dplyr))
+source("../src/graphics.R")
+source("../src/seurat_fx.R")
+```
+### Setting-up environment
+The environment will be set with a random seed number for reproducibility and an output folder
+for processed data and figures.
+
+```{r env}
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./output/03_macrophages"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+# Input data
+sobj <- "./output/02_assignment/S.rds"
+```
+
+
+## Load data
+Read the Seurat Object from second step.
+```{r load_seurat}
+if(file.exists(sobj)) {
+	S <- readRDS(sobj)
+} else {
+	stop("ERROR: Seurat object does not exist. Run 02.rmd to generate it.")
+}
+```
+
+We also load the ortholog information for functional analysis
+```{r}
+# Lib of hsa2mmu orthologs
+mmu2hsa <- readRDS("../data/Gene_annotation/hgnc2mgi_hsa2mmu.rds")
+```
+
+## Comparison between PHD2 functional perturbation
+The in-vivo model carries a PHD2 knock-out in the myeloid lineage with an effectivity of 30% of the cells.
+The section will investigate if the penetrance of this gene perturbation is enough to be capture in the 
+average population of the mouse replicate.
+
+### Differential gene expression
+```{r scatterplot_macrophages_PHD2cKO_vs_PHD2wt, fig.width=5, fig.height=5, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+MARKERS.OUTDIR <- paste0(OUTDIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt")
+if(!dir.exists(MARKERS.OUTDIR)) dir.create(MARKERS.OUTDIR);
+
+S1 <- S[, S@active.ident=="Macrophage"]
+
+Idents(S1) <- "stim"
+avg <- log1p(AverageExpression(S1, verbose = FALSE)$RNA)
+  
+rnk <- setNames(avg[,"PHD2cKO"] - avg[,"WT"], rownames(avg))
+top <- names(sort(abs(rnk),decreasing = TRUE)[1:15])
+  
+ggplot(avg, aes(WT, PHD2cKO)) + geom_point(alpha=0.6) + ggtitle(label = "Macrophages") + 
+	xlab("WT") + ylab("PHD2cKO")+
+	geom_label_repel(data=avg[top,], aes(label=top), size=5) + 
+	theme_cowplot() +
+      theme(axis.title = element_text(size=22),
+            title = element_text(size=22, hjust = 0.5),
+            axis.text = element_text(size=18),
+            axis.title.x = element_text(size=18),
+            axis.title.y = element_text(size=18))
+    
+  
+dge <- FindMarkers(object = S1, ident.1 = "PHD2cKO", ident.2 = "WT", 
+		  logfc.threshold=0, min.pct=0)
+cols_names <- colnames(dge)
+# Add two extra cols
+dge$cluster <- "Macrophage PHD2cKO vs PHD2wt"
+dge$gene <- rownames(dge)
+
+dge <- dge[,c("cluster", "gene", cols_names)]
+   
+write.table(dge,
+            file = paste0(MARKERS.OUTDIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt_DEGs.tsv"),
+            sep="\t",col.names = TRUE, row.names = FALSE, quote=FALSE
+)
+```
+
+There are these number of differentially expressed genes between the two conditions:
+```{r}
+table(sign(dge$avg_logFC) * as.integer(dge$p_val_adj < 0.05))
+```
+
+We could conclude that there are not large differences in the average gene expression of 
+macrophages based on condition (PHD2 KO). Next efforts will be made to recover transcriptional 
+programmes on this regulation and try to dissect cell populations
+
+### Functional analysis
+We create a ranking of differentially expressed genes for the enrichment analysis.
+```{r}
+rnk <- setNames(sign(dge$avg_logFC) * -log10(dge$p_val_adj), dge$gene)
+```
+
+```{r}
+# GO analysis
+GO <- getGmt("../data/MSigDB/c5.bp.v7.0.symbols.gmt")
+GO <- lapply(geneIds(GO), function(z) unlist(sapply(z, function(j) mmu2hsa[[j]])))
+
+GO.res <- fgsea(pathways = GO, stats = rnk, nperm=10000) 
+GO.res <- GO.res[order(GO.res$padj, decreasing=FALSE),]
+head(GO.res)
+```
+
+```{r}
+# HALLMARK
+H <- getGmt("../data/MSigDB/h.all.v6.2.symbols.gmt")
+H <- lapply(geneIds(H), function(z) unlist(sapply(z, function(j) mmu2hsa[[j]])))
+
+H.res <- fgsea(pathways = H, stats = rnk, nperm=10000) 
+H.res <- H.res[order(H.res$padj, decreasing=FALSE),]
+head(H.res)
+```
+
+It seems that hypoxia is up-regulated in PHD2-cKO condition, but the signal is 
+not strong enough. Given the biology of the two conditions, it could be the case 
+that the PHD2-wt is also responding to hypoxia because of the atherogenesis, enmasking 
+the output of the contrast. Next section will study this.
+
+## Dissection of hypoxia response and PHD2 functional impairment
+Herein a transcriptional dissection of hypoxia is performed driven by the
+hypothesis that PHD2-KO perturbation triggers a strong hypoxia response. It is expected
+that the PHD2-cKO condition presents an over-representation of cells responding to hypoxia.
+
+### Dorothea focused on Hif1a
+Text
+
+```{r vln_macrophages_dorothea_hif1a, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+# load regulons
+df2regulon <- function(df, regulator_name="tf") {
+  regulon = df %>% split(.[regulator_name]) %>% map(function(dat) {
+    targets = setNames(dat$mor, dat$target)
+    likelihood = dat$likelihood
+    list(tfmode = targets, likelihood = likelihood)
+  })
+  return(regulon)
+}
+
+regulon.df <- read.table("../data/Prior/dorothea_regulon_mouse_v1.csv", sep=",", header=TRUE, stringsAsFactors = FALSE)
+regul <- df2regulon(df=regulon.df)
+
+# Calculate TF activities
+TF <- viper(eset = as.matrix(S@assays$RNA@data), regulon = regul,
+              nes = T, method = "none", minsize = 4,
+              eset.filter = F, adaptive.size = F)
+  
+# Add them as metadata
+stopifnot(colnames(S) == colnames(TF))
+S$Hif1a_activity <- TF["Hif1a",]
+rm(TF)
+
+# Visualization focused on Macrophages population
+  #VlnPlot(S[, Idents(S)=="Macrophage"],features = "Hif1a_activity", group.by = "stim")
+VlnPlot.stim(S[,Idents(S)=="Macrophage"], 
+     meta.feature = "Hif1a_activity", ylab="Hif1a activity", 
+     fontTXT=fontTXT)
+
+```
+
+### PROGENy focused on hypoxia response
+Text
+
+```{r vln_progeny_hypoxia_macrophages, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+### Progeny ####
+progeny.mat <- read.table("../data/Prior/progeny_matrix_mouse_v1.txt",sep=",",header=TRUE)
+rownames(progeny.mat) <- progeny.mat$X
+progeny.mat <- progeny.mat[which(colnames(progeny.mat)!="X")]
+progeny.mat <- as.matrix(progeny.mat)
+
+common <- intersect(rownames(S), rownames(progeny.mat))
+  
+prog <- t(as.matrix(S@assays$RNA@data[common,])) %*% progeny.mat[common,]
+rn <- rownames(prog)
+prog <- apply(prog,2,scale)
+rownames(prog) <- rn
+prog <- t(prog)
+  
+stopifnot(colnames(S) == colnames(prog))
+S$Hypoxia_response <- prog["Hypoxia",]
+rm(common,prog)
+
+# Visualization focused on Macrophages population
+ # VlnPlot(S[, Idents(S)=="Macrophage"],features = "Hypoxia_response", group.by = "stim")
+VlnPlot.stim(S[,Idents(S)=="Macrophage"], 
+     meta.feature = "Hypoxia_response", ylab="Hypoxia response (Score)", 
+     fontTXT=fontTXT)
+
+
+```
+
+### Enrichment of in-vitro PHD2-KO signature
+```{r define_signature}
+# Load in-vitro signature from the bulk analysis
+invitro.dge <- read.table("../Analysis_invitro_bulk/output/01_bulk_dge/MC_PHD2_diffexpr.tsv", 
+			  sep="\t", header=TRUE, stringsAsFactors = FALSE)
+invitro.sign <- sort(setNames(invitro.dge$t,invitro.dge$genes),decreasing = TRUE)
+# Get common genes
+common <- intersect(rownames(S), names(invitro.sign))
+# Discard certain genes that are driving
+avoid_genes <- c("Bnip3", "Spp1")
+common <- setdiff(common, avoid_genes)
+# Define signature and show
+invitro.gs <- names(sort(invitro.sign[common],decreasing = TRUE))[1:50]
+print(invitro.gs)
+```
+
+```{r vln_aucell_phd2ko_macrophages, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+# Build rankings for AUC
+cells_rankings <- AUCell_buildRankings(as.matrix(S@assays$RNA@data))
+# Use top N (e.g. 50) to calculate enrichment at single-cell level
+cells_AUC <- AUCell_calcAUC(list("invitro"=invitro.gs), cells_rankings, aucMaxRank=nrow(cells_rankings)*0.05)
+# Explore thresholds
+cells_assignment <- AUCell_exploreThresholds(cells_AUC, plotHist=FALSE, assign=TRUE) 
+# Get AUCell scores  
+AUC.sign <- getAUC(cells_AUC)[1,]
+stopifnot(colnames(S) == names(AUC.sign))
+S$PHD2cKO <- AUC.sign
+rm(AUC.sign, cells_rankings, cells_AUC, cells_assignment)
+
+# Visualization focused on Macrophages population
+ # VlnPlot(S[, Idents(S)=="Macrophage"],features = "PHD2cKO", group.by = "stim")
+VlnPlot.stim(S[,Idents(S)=="Macrophage"], 
+     meta.feature = "PHD2cKO", ylab="Expression of PHD2cKO signature (AUC)", 
+     fontTXT=fontTXT)
+```
+
+### Pair-wise comparison of these markers of hypoxia response
+
+```{r pairs_hypoxia_macrophages, fig.width=9, fig.height=9, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+# Define colors for ggplot
+cond.cols <- c("WT"="grey", "PHD2cKO"="red")
+
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor, family=fontTXT, ...)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- abs(cor(x, y, method="pearson"))
+  txt <- format(c(r, 0.123456789), digits=digits)[1]
+  txt <- paste(prefix, txt, sep="")
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * r, family=family)
+}
+
+# Visualization
+pairs(S@meta.data[Idents(S)=="Macrophage",
+      		c("Hif1a_activity","Hypoxia_response","PHD2cKO")],
+      lower.panel=panel.smooth, upper.panel=panel.cor, cex.labels = 2.6, cex.axis=2.3, las=1,
+      family=fontTXT,
+      pch=21,
+      bg=cond.cols[S@meta.data[Idents(S)=="Macrophage", "stim"]])
+```
+
+We could conclude that PHD2-cKO condition presents a skewed distribution of cells towards 
+hypoxia response as compared to PHD2-wt condition.
+
+### Stratify
+
+```{r}
+cutoff <- quantile(S@meta.data[Idents(S)=="Macrophage" & S$stim=="PHD2cKO", "PHD2cKO"], 
+		   probs=0.75) 
+
+S$PHD2cKO_class <- NA
+
+S$PHD2cKO_class[Idents(S)=="Macrophage"] <- ifelse(S$PHD2cKO[Idents(S)=="Macrophage"] > cutoff,
+						   "High", "Low")
+
+S$PHD2cKO_class2 <- paste0(S$stim,"_",S$PHD2cKO_class)
+
+```
+
+```{r vln_aucell_phd2ko_macrophages_wCutoff, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+# Visualization focused on Macrophages population
+VlnPlot.stim(S[,Idents(S)=="Macrophage"], 
+     meta.feature = "PHD2cKO", ylab="Expression of PHD2cKO signature (AUC)", 
+     fontTXT=fontTXT) + geom_hline(yintercept=cutoff)
+```
+
+
+
+```{r}
+S1 <- S[, Idents(S)=="Macrophage"] 
+Idents(S1) <- "PHD2cKO_class2"
+dge <- FindMarkers(S1, ident.1 = "PHD2cKO_High", ident.2 = "WT_Low",
+		   min.pct = 0, logfc.threshold = 0)
+```
+
+
+```{r volcano_PHD2cKOsign_high_vs_low, dpi=300, fig.width=8, fig.height=6, fig.path='./output/03_macrophages/', dev = c('png','tiff')}
+Mac_interesting_genes <- getGmt("../data/Prior/MC_PHD2_diff.gmt")
+Mac_interesting_genes <- unlist(geneIds(Mac_interesting_genes))
+if(any(!Mac_interesting_genes %in% rownames(S1))) {
+	cat(paste("The following genes are not present in the gene expr matrix:","\n",
+		  paste(setdiff(Mac_interesting_genes, rownames(S1)), collapse=","),
+		  "\n"),
+		  file=stdout())
+	Mac_interesting_genes <- intersect(Mac_interesting_genes, rownames(S1))
+}
+
+dge$significant <- ifelse(dge$p_val_adj < 0.05,"Adj.P-value<0.05","n.s.")
+dge$genes <- rownames(dge)
+dge$show <- dge$genes %in% Mac_interesting_genes
+ 
+p = ggplot(dge, aes(avg_logFC, -log10(p_val+0.001))) +
+    geom_point(aes(col=significant), alpha=0.6) +
+    scale_color_manual(values=c("red", "black"))
+  
+  
+p+geom_label_repel(data=dge[dge$show,],
+                          aes(label=genes), family=fontTXT, size=8,
+                          force=2,
+			  xlim = c(2.5,3.0),
+                          nudge_y=0.05, direction = "y", segment.size = 0.5) + 
+    coord_cartesian(xlim = c(-1.3, 2.3), clip = "off") +
+    theme_cowplot() +
+    xlab("avg log2FC") + ylab("-log10(pvalue + 0.001)") +
+    theme(text = element_text(family=fontTXT, size=20),
+	  legend.text = element_text(family=fontTXT, size=20),
+	  axis.text = element_text(family=fontTXT, size=20),
+    	  plot.margin = unit(c(0.3, 2.6, 0.1, 0.1), "cm"),
+	  legend.position = "bottom",
+	  legend.direction = "horizontal"
+	  )
+```
+
+## Save the Seurat Object
+```{r seurat_obj}
+saveRDS(S, paste0(OUTDIR,"/S.rds"));
+```
+
+## SessionInfo
+```{r}
+sessionInfo()
+
+{                                                                                                                                                                                                           
+sink(file=paste0(OUTDIR,"/sessionInfo.txt"))
+print(sessionInfo())
+sink()
+}
+```

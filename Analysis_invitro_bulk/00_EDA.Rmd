@@ -186,3 +186,16 @@ title(ylab="height", cex.lab=1.5, line=+3.7)
 
 We conclude that biological replicates and conditions are cluster as it would be expected given 
 the experimental settings.
+
+## Session info
+
+```{r}
+sessionInfo()
+
+{                                                                                                                                                                                                           
+sink(file=paste0(OUTDIR,"/sessionInfo.txt"))
+print(sessionInfo())
+sink()
+}
+```
+

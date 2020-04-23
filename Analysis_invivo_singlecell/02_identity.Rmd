@@ -1,14 +1,34 @@
 ---
-title: "Cell identify assignment for atherosclerotic plaques"
-author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de"
+title: "Cell identify assignment for atherosclerotic plaques single-cell RNAseq samples"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+## Setup
+The environment will be set with a random seed number for reproducibility and an output folder
+for processed data and figures.
 
-## Load libraries
+### Environment
+```{r env}
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./02_identity_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
+```
+
+### Load libraries
 ```{r}
 suppressPackageStartupMessages(require(Seurat))
 suppressPackageStartupMessages(require(GSEABase))
@@ -22,24 +42,13 @@ suppressPackageStartupMessages(require(optparse))
 source("../src/seurat_fx.R")
 source("../src/graphics.R")
 ```
-### Setting-up environment
-The environment will be set with a random seed number for reproducibility and an output folder
-for processed data and figures.
-
-```{r env}
-# Seed number
-set.seed(1234)
-# Output directory
-OUTDIR <- "./output/02_assignment"
-if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
-# Input data
-sobj <- "./output/01_integration/S.rds"
-```
-
 
 ## Load data
 Read the Seurat Object from first step.
 ```{r load_seurat}
+# Input data
+sobj <- "./01_integration_output/data/S.rds"
+
 if(file.exists(sobj)) {
 	S <- readRDS(sobj)
 } else {
@@ -51,44 +60,38 @@ if(file.exists(sobj)) {
 Immune cells are defined by expression of Prtcpr, 
 while non-immune cells such as mesenchymal cells are so by collagen genes.
 
-```{r umap_immune, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
+```{r umap_immune, dpi=300}
 # FeaturePlot(S, features = "Ptprc", label = TRUE, label.size = 14)
 VlnPlot(S, features="Ptprc")
 ```
-```{r umap_nonimmune, fig.width=14, fig.height=6, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
+```{r umap_nonimmune, fig.width=14, fig.height=6, dpi=300}
 FeaturePlot(S, features = c("Col3a1", "Col14a1"), label = TRUE, label.size = 14)
 # VlnPlot(S, features=c("Col3a1", "Col14a1"))
 ```
 
 Macrophages are characterized by expression of CD68
 
-```{r umap_cd68, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
+```{r vln_cd68, dpi=300}
 VlnPlot(S, features="Cd68")
 ```
 Fibroblasts express Pdgfra and Smoc2, these are further characterized later.
-```{r umap_markers_unk, fig.width=14, fig.height=6, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
+```{r umap_markers_unk, fig.width=14, fig.height=6, dpi=300}
 FeaturePlot(S, features = c("Pdgfra","Smoc2"), label = TRUE, label.size = 14)
 ```
 
 And SMC express Acta2, which are further characterized later.
-```{r}
+```{r vln_acta2, dpi=300}
 VlnPlot(S, features = c("Acta2"))
 ```
 
 Thus we can conclude with the stratification
 ```{r}
 S$immune <- Idents(S) %in% c("1","3","6","7","8")
-S$Cd68 <- Idents(S) %in% c("1", "3", "8")
+S$Cd68_positive <- Idents(S) %in% c("1", "3", "8")
 ```
 
 Finally we conclude showing the expresion of a consensus set of markers (from previous step, see 01.Rmd) 
 for each cell type in the biological context. And assign cell type identities for each cluster.
-
-```{r heatmap_consensus, fig.width=14, fig.height=10, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
-DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/consensus.gmt"), 
-	   assay = "RNA", res=NULL, row_names_size=12, show_hr=FALSE)
-```
-
 
 ```{r}
 ren_id <- c("0"="Fibroblast",
@@ -104,8 +107,17 @@ ren_id <- c("0"="Fibroblast",
 S <- RenameIdents(S, ren_id)
 ```
 
-We show the UMAP plot for publishing
-```{r umap_plot, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
+```{r heatmap_consensus, fig.width=14, fig.height=10, dpi=300, warning=FALSE}
+hp <- DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/consensus_plaque.gmt"), 
+	   assay = "RNA", res="Idents", row_names_size=12, column_title_size=0, 
+	   fontfamily=fontTXT,
+	   show_hr=FALSE)
+draw(hp, heatmap_legend_side="right", annotation_legend_side="bottom")
+```
+
+
+We show the UMAP plot with final annotations
+```{r umap_plot, dpi=300, warning=FALSE}
 #geom_text <- function(...) geom_text(..., family="Calibri")
 #geom_repel <- function(...) geom_repel(..., family="Calibri")
 update_geom_defaults("text", list(family=fontTXT))
@@ -116,7 +128,7 @@ DimPlot(S, reduction = "umap", label = TRUE, label.size = 9) +
 	)
 ```
 
-```{r umap_condition, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
+```{r umap_condition, dpi=300, warning=FALSE}
 DimPlot(S, reduction = "umap", cols = c("grey","red"), group.by="stim", label = FALSE) + 
 	theme(text=element_text(family=fontTXT),
 	      axis.text=element_text(family=fontTXT, size=20),
@@ -124,7 +136,7 @@ DimPlot(S, reduction = "umap", cols = c("grey","red"), group.by="stim", label = 
 	)
 ```
 
-```{r vln_Egln1, dpi=300, fig.path="./output/02_assignment/", dev=c('png','tiff')}
+```{r vln_Egln1, dpi=300}
 vln1 <- VlnPlot(S[,Idents(S) %in% c("Macrophage","Fibroblast") & S$stim=="PHD2cKO"], feature="Egln1") 
 vln2 <- VlnPlot(S[,Idents(S) %in% c("Macrophage","Fibroblast") & S$stim=="WT"], feature="Egln1") 
 CombinePlots(list(vln1,vln2), ncol = 1)
@@ -132,7 +144,7 @@ CombinePlots(list(vln1,vln2), ncol = 1)
 
 ## Save the Seurat Object
 ```{r seurat_obj}
-saveRDS(S, paste0(OUTDIR,"/S.rds"));
+saveRDS(S, paste0(DATADIR,"/S.rds"));
 ```
 
 ## SessionInfo
@@ -145,8 +157,4 @@ print(sessionInfo())
 sink()
 }
 ```
-
-
-
-
 

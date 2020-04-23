@@ -1,7 +1,8 @@
-Exploratory analysis on conventional bulk RNA-seq from PHD2 in
-atherogenesis
+Exploratory Data Analysis (EDA) on conventional bulk RNA-seq from
+in-vitro Macrophage PHD2cKO and medium conditioned Fibroblasts
 ================
-Javier Perales-Paton - <javier.perales@bioquant.uni-heidelberg.de>
+Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de> -
+ORCID: 0000-0003-0780-6683
 
 Transcriptome profiling with conventional RNAseq was performed in three
 replicates of macrophages carrying PHD2 knock-out (with wildtype) and
@@ -21,11 +22,21 @@ options(stringsAsFactors = FALSE)
 # Seed number
 set.seed(1234)
 # Output directory
-OUTDIR <- "./output/00_exploratory"
+OUTDIR <- "./00_EDA_output/"
 if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
 ```
 
 ### Load libraries
+
+Essential libraries for R analysis.
 
 ``` r
 library(edgeR)
@@ -136,15 +147,29 @@ library(dendextend)
     ## 
     ##     cutree
 
+``` r
+source("../src/graphics.R")
+```
+
+    ## Loading required package: extrafont
+
+    ## Registering fonts with R
+
 ## Load data and normalize
+
+The data must be stored locally in the `./data/bulk` folder. This
+processed data has been deposited under the accession number described
+in the main [README file](../README.md) of the project.
 
 ``` r
 ### 1 Load data
-cnt <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-rawdata.txt", sep="\t", header = TRUE, check.names = FALSE)
+cnt <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-rawdata.txt", 
+          sep="\t", header = TRUE, check.names = FALSE)
 rownames(cnt) <- cnt[,1]
 cnt <- cnt[,-1]
 
-targets <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-metadata.txt", sep="\t",header=TRUE, colClasses = "character")
+targets <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-metadata.txt", 
+              sep="\t",header=TRUE, colClasses = "character")
 targets$Sample <- gsub(" ","_",targets$Sample)
 
 # Rename samples
@@ -158,7 +183,7 @@ gt <- factor(gsub("^(3T3|MΦ)_", "", targets$Group), levels=c(c("PHD2_WT", "PHD2
 cell <- factor(unlist(sapply(targets$Group, function(z) strsplit(z, split="_")[[1]][1])))
 repl <- factor(targets$Replicate)
 
-## 2 Create DGElist
+## 2 Create DGElist (edgeR package, followed by TMM default normalization method)
 y <- DGEList(counts = cnt, group = gr, genes = rownames(cnt))
 y <- calcNormFactors(y, method = "TMM")
 ```
@@ -172,11 +197,61 @@ par(mar=c(10,8,4,4));
 barplot(y$samples$lib.size,names.arg = rownames(y$samples), las=2)
 ```
 
-![](00_exploratory_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_KO_2' in 'mbcsToSbcs': dot
+    ## substituted for <ce>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_KO_2' in 'mbcsToSbcs': dot
+    ## substituted for <a6>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_KO_1' in 'mbcsToSbcs': dot
+    ## substituted for <ce>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_KO_1' in 'mbcsToSbcs': dot
+    ## substituted for <a6>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_WT_2' in 'mbcsToSbcs': dot
+    ## substituted for <ce>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_WT_2' in 'mbcsToSbcs': dot
+    ## substituted for <a6>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_WT_3' in 'mbcsToSbcs': dot
+    ## substituted for <ce>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_WT_3' in 'mbcsToSbcs': dot
+    ## substituted for <a6>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_WT_1' in 'mbcsToSbcs': dot
+    ## substituted for <ce>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_WT_1' in 'mbcsToSbcs': dot
+    ## substituted for <a6>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_KO_3' in 'mbcsToSbcs': dot
+    ## substituted for <ce>
+
+    ## Warning in axis(if (horiz) 2 else 1, at = at.l, labels = names.arg, lty
+    ## = axis.lty, : conversion failure on 'MΦ_PHD2_KO_3' in 'mbcsToSbcs': dot
+    ## substituted for <a6>
+
+![](./00_EDA_output//figures/unnamed-chunk-3-1.png)<!-- -->
 
 ### Principal Component analysis
 
-First we start with the definition of ad-hoc handle functions.
+First we start with the definition of ad-hoc handle functions to quick
+generate PCA plots (i.e. two-first principal components showing their
+variance explained).
 
 ``` r
 # Define some functions
@@ -186,30 +261,28 @@ runPCA <- function(mat) {
   return(pca)
 }
 
-plotPCA <- function(pca, dims, pchs, cols, labels=NULL) {
+plotPCA <- function(pca, dims, pchs, cols, labels=NULL, family="Arial") {
   importance <- summary(pca)$importance[,dims]
   PCscores <- data.frame(pca$x)[,dims]
   
   plot(PCscores,las=1,
        pch=pchs,bg=cols,
+       family=family,
+       cex.axis=1.3, cex.lab=1.3,
        xlab=paste0(dims[1]," : ",format(round(importance[2,dims[1]]*100,digits = 2),nsmall = 2),"% var expl."),
        ylab=paste0(dims[2]," : ",format(round(importance[2,dims[2]]*100,digits = 2),nsmall = 2),"% var expl."))
   if(!is.null(labels)) {
     par(xpd=TRUE)
-    text(x=PCscores[,dims[1]], y=PCscores[,dims[2]], labels=labels, pos=1)
+    text(x=PCscores[,dims[1]], y=PCscores[,dims[2]], labels=labels, pos=1, family=family)
   }
 }
 ```
 
-Then we run PCA and visualize it
+Then we run PCA and visualize the PCA plots.
 
 ``` r
 # Run PCA
 pca <- runPCA(mat = cpm(y, log = TRUE))
-
-# Visualize
- #plot(PC2 ~ PC1, data=data.frame(pca$x),pch=c(21,23)[as.integer(cell)],bg=as.integer(gt))
- #par(xpd=TRUE); text(x = pca$x[,1], y=pca$x[,2], labels = targets$Replicate, pos = 2)
 
 par(mar=c(4,4,4,12), xpd=TRUE)
 plotPCA(pca=runPCA(mat = cpm(y, log = TRUE)),
@@ -236,10 +309,10 @@ legend("topright",legend = levels(gt), pch=c(22),pt.bg = c("black","red"),
        inset = c(-0.4,0), title = "Perturbation")
 ```
 
-![](./output/00_exploratory/pca-1.png)<!-- -->
+![](./00_EDA_output//figures/pca-1.png)<!-- -->
 
 ``` r
-# Which is
+# Which hallmarks of cell state are explained by those principal components
 PC1_loadings <- sort(abs(pca$rotation[,"PC1"]),decreasing = TRUE)
 GSC <- getGmt("../data/MSigDB/h.all.v6.2.symbols.gmt")
 res <- fgsea(pathways = geneIds(GSC), stats = setNames(PC1_loadings, toupper(names(PC1_loadings))), nperm = 1000)
@@ -313,7 +386,68 @@ variability in the experiment. Moreover, It seems Hypoxia response is
 involved in this separation. This makes sense given the knowledge on the
 role of PHD2.
 
+In addition, we also look into individual PCA for each experiment.
+
+``` r
+# Macrophages
+plotPCA(pca=runPCA(mat = cpm(y[,cell=="MΦ"], log = TRUE)),
+        dims=c("PC1","PC2"),
+        pchs=c(21), cols=as.integer(gt[cell=="MΦ"]))
+```
+
+![](./00_EDA_output//figures/pca_macrophages-1.png)<!-- -->
+
+``` r
+# Fibroblasts
+plotPCA(pca=runPCA(mat = cpm(y[,cell=="3T3"], log = TRUE)),
+        dims=c("PC1","PC2"), family=fontTXT,
+        pchs=c(21), cols=as.integer(gt[cell=="3T3"]))
+```
+
+    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
+    ## unknown for character 0x2d
+    
+    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
+    ## unknown for character 0x2d
+    
+    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
+    ## unknown for character 0x2d
+    
+    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
+    ## unknown for character 0x2d
+    
+    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
+    ## unknown for character 0x2d
+    
+    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
+    ## unknown for character 0x2d
+
+    ## Warning in title(...): font width unknown for character 0x20
+    
+    ## Warning in title(...): font width unknown for character 0x20
+    
+    ## Warning in title(...): font width unknown for character 0x20
+    
+    ## Warning in title(...): font width unknown for character 0x20
+    
+    ## Warning in title(...): font width unknown for character 0x20
+    
+    ## Warning in title(...): font width unknown for character 0x20
+    
+    ## Warning in title(...): font width unknown for character 0x20
+    
+    ## Warning in title(...): font width unknown for character 0x20
+
+![](./00_EDA_output//figures/pca_fibroblasts-1.png)<!-- -->
+
+We conclude that first principal component separates conditions in each
+experiment.
+
 ### Hierchical clustering
+
+Finally, we perform Hierarchical clustering with the top 10% most
+variable genes to explore pair-wise sample similarities. We would expect
+that biological replicates would cluster together.
 
 ``` r
 cpm_norm <- cpm(y,log=TRUE)
@@ -409,4 +543,7 @@ plot(dend, las=1, ylab="", cex.axis=1.5)
 title(ylab="height", cex.lab=1.5, line=+3.7)
 ```
 
-![](./output/00_exploratory/hc-1.png)<!-- -->
+![](./00_EDA_output//figures/hc-1.png)<!-- -->
+
+We conclude that biological replicates and conditions are cluster as it
+would be expected given the experimental settings.

@@ -1,0 +1,146 @@
+---
+title: "Inference of Transcription Factor activity in Mieloid PHD2 deficiency in atherogenesis"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Herein we perform a Transcription Factor (TF) analysis on the role of Myeloid-derived PHD2 in 
+atherogenesis. For that, we use normalized data from the differential gene expression analysis 
+and estimate TF activities using DoRothEA mouse regulons. See main README file for details.
+
+## Setup environment
+The environment will be set with a random seed number for reproducibility and an output folder
+for processed data and figures.
+
+### set env
+```{r env}
+options(stringsAsFactors = FALSE)
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./03_TF_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
+```
+
+### Load libraries
+Essential libraries for R analysis.
+```{r load_libs}
+library(limma)
+library(viper)
+library(purrr)
+```
+
+## Load data
+We use the output data from DGE step (01). In particular,
+the limma objects which contains gene expression, statistics and 
+design of the contrasts.
+```{r}
+v <- readRDS("./01_DGE_output/data/v.rds")
+eBay <- readRDS("./01_DGE_output/data/eBay.rds")
+```
+
+## Transcription factor analysis using DoRothEA
+We read the mouse regulons for TF analysis.
+```{r}
+# Function to transform a data.frame to viper's regulon 
+# format using purrr. Ack. to CH. Holland.
+df2regulon <- function(df, regulator_name="tf") {
+  regulon = df %>% split(.[regulator_name]) %>% map(function(dat) {
+    targets = setNames(dat$mor, dat$target)
+    likelihood = dat$likelihood
+    list(tfmode = targets, likelihood = likelihood)
+  })
+  return(regulon)
+}
+
+# Read dorothea mouse TF regulons
+regulon.df <- read.table("../data/Prior/dorothea_regulon_mouse_v1.csv", 
+			 sep=",", header=TRUE, stringsAsFactors = FALSE)
+# We shrink the analysis to those TF regulons with high-to-intermediate confidence
+regulon.df <- subset(regulon.df, confidence %in% c("A","B","C")) # E are discarded
+# Transform data.frame to viper regulon format
+regul <- df2regulon(df=regulon.df)
+```
+
+The TF activities are estimated using `viper`. Similarly to gene-level differential expression, 
+contrasts performed using Empirical Bayes method implemented in `limma`
+```{r}
+TF = viper(eset = v$E, 
+	   regulon = regul,
+           nes = T, minsize = 4,
+           eset.filter = F, 
+	   adaptive.size = F, 
+	   verbose=FALSE)
+
+TF.fit <- lmFit(TF, v$design)
+TF.cont.mat <- makeContrasts("Fib_PHD2"=Fib_PHD2_KO - Fib_PHD2_WT,
+                          "MC_PHD2"=MC_PHD2_KO - MC_PHD2_WT,
+                          levels=v$design)
+TF.fit <- eBayes(TF.fit)
+TF.fit2 <- contrasts.fit(TF.fit, TF.cont.mat)
+TF.eBay <- eBayes(TF.fit2)
+```
+
+
+## Broad statistics on diff TFs
+Just check how many TFs are differentially active
+```{r}
+diffTF_cnt <- apply(decideTests(TF.eBay),2, table)
+print(diffTF_cnt)
+```
+
+## Diagnostics and save results
+Write tables as supplementary data for the records and further interpretation.
+```{r diagnostics_diffTF}
+for(cont in colnames(TF.cont.mat)) {
+  cat(paste0("Registering differential expression for ",cont,"\n"),
+	file=stdout())
+  topTab <- topTable(TF.eBay, coef=cont, number = Inf)
+  # DEGs table
+  write.table(topTab, file=paste0(DATADIR,cont,"_diffTF.tsv"),sep="\t",
+                                  row.names=FALSE, col.names=TRUE, quote=FALSE)
+  # Volcano plot
+  plot(TF.eBay$coefficients[,cont], -log10(TF.eBay$p.value[,cont]),
+       xlab="log2-fold-change", ylab="-log10(pvalue)", cex=0.7)
+  # Histogram of p-vals
+  hist(TF.eBay$p.value[,cont])
+}
+```
+Histogram of p-values looks good, and volcano plots as well. Certainly Fibroblasts presents 
+higher proportion of TF dysregulated from the medium conditioned with Macrophages PHD2cKO.
+
+## Hypothesis-driven test of Hif1a up-regulation in Macrophages PHD2cKO
+Based on previous pathway analysis and literature, it would be expected that actually 
+Hif1a transcription factors presents high activity upon PHD2 dysfunction. As it is confirmed 
+below:
+
+```{r Hif1a_UP_confirmation}
+MC_PHD2cKO_Hif1a <- topTable(TF.eBay, coef="MC_PHD2", number=Inf)["Hif1a",]
+```
+
+We could conclude that Hif1a is `r 2^MC_PHD2cKO_Hif1a$logFC`-fold times more active 
+in macrophages upon PHD2-KO (FDR=`r MC_PHD2cKO_Hif1a$adj.P.Val`).
+
+## Session info
+
+```{r}
+sessionInfo()
+
+{                                                                                                                                                                                                           
+sink(file=paste0(OUTDIR,"/sessionInfo.txt"))
+print(sessionInfo())
+sink()
+}
+```

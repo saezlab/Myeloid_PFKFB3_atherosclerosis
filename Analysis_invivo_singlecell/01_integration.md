@@ -1,7 +1,48 @@
 Integrated analysis with Seurat of atherosclerotic plaques in the
 context of Myeloid PHD2 deficiency
 ================
-Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de>
+Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de> -
+ORCID: 0000-0003-0780-6683
+
+Single-cell transcriptomics profiling of atherosclerotic plaques from a
+pooled sample of Myeloid-lineage PHD2cKO and WT mice were done. Herein
+we carry out a standard workflow using Seurat package, which is used to
+integrate both samples and identify cell types in the bulk sample.
+Finally, several comparisons with several collections of markers in the
+biological context are performed to test whether the unsupervised
+clustering recapitulates the expected cell populations in the
+atherosclerotic plaques.
+
+Most of parameters of the analysis used here are based on default
+settings of Seurat. However we have choosen a certain number or
+principal components based on exploratory analysis on the outcome of
+those. We opt to keep low resolution in the unsupervised clustering to
+identify the supercluster of macrophages, later it will be dissected in
+a second round of unsupervised clustering.
+
+## Setup
+
+We define a random seed number for reproducibility, file structure for
+the output, and what is more important: the parameters of the standard
+analysis with Seurat.
+
+### Environment
+
+``` r
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./01_integration_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
+```
 
 ## Load libraries
 
@@ -15,26 +56,24 @@ suppressPackageStartupMessages(require(genesorteR))
 suppressPackageStartupMessages(require(optparse))
 # Get some functions for Seurat analysis
 source("../src/seurat_fx.R")
-set.seed(1234)
+source("../src/graphics.R")
 ```
-
-## Setting-up environment
 
 ### Input parameters
 
 ``` r
 # Define input parameters
 option_list = list(
-  make_option(c("--CASE_INPUT"), action="store", default="../data/sc/CK64/filtered_feature_bc_matrix/", type='character',
+  make_option(c("--CASE_INPUT"), action="store", 
+          default="../data/sc/CK64/filtered_feature_bc_matrix/", type='character',
               help="cellranger count folder that contains the output matrices"),
   make_option(c("--CASE_SNAME"), action="store", default="PHD2cKO", type='character',
               help="Sample name"),
-  make_option(c("--CONTROL_INPUT"), action="store", default="../data/sc/CK62/filtered_feature_bc_matrix/", type='character',
+  make_option(c("--CONTROL_INPUT"), action="store", 
+          default="../data/sc/CK62/filtered_feature_bc_matrix/", type='character',
               help="cellranger count folder that contains the output matrices"),
   make_option(c("--CONTROL_SNAME"), action="store", default="WT", type='character',
               help="Sample name"),
-  make_option(c("--OUTDIR"), action="store", default="./output/01_integration/", type='character',
-              help="Output directory"),
   make_option(c("--NPC"), action="store", default=50, type='numeric',
               help="number of principal components to calculate."),
   make_option(c("--NPC_ANCHOR"), action="store", default=20, type='numeric',
@@ -66,17 +105,10 @@ for(user_input in names(opt)) {
     ## [INFO] CASE_SNAME => PHD2cKO
     ## [INFO] CONTROL_INPUT => ../data/sc/CK62/filtered_feature_bc_matrix/
     ## [INFO] CONTROL_SNAME => WT
-    ## [INFO] OUTDIR => ./output/01_integration/
     ## [INFO] NPC => 50
     ## [INFO] NPC_ANCHOR => 20
     ## [INFO] NPC_CLUSTERING => 25
     ## [INFO] RES => 0.1
-
-### Output directory
-
-``` r
-if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
-```
 
 ## Load data
 
@@ -163,8 +195,6 @@ DefaultAssay(S) <- "integrated"
 
 ## Cell clustering and dimensionality reduction
 
-We use the default parameters from Seurat to do so.
-
 First scale the data and get principal components
 
 ``` r
@@ -179,7 +209,7 @@ PCs
 ElbowPlot(S,ndims = NPC) + geom_vline(xintercept = NPC_CLUSTERING, col="red")
 ```
 
-![](01_integrated_seurat_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](./01_integration_output//figures/unnamed-chunk-7-1.png)<!-- -->
 
 Perform SNN
     clustering
@@ -336,7 +366,7 @@ S <- FindClusters(S, resolution = seq(from=0.1, to=1.5, by=0.1))
 clustree(S, prefix = "integrated_snn_res.")
 ```
 
-![](./output/01_integration/clustree-1.png)<!-- -->
+![](./01_integration_output//figures/clustree-1.png)<!-- -->
 
 Decide the final resolution:
     0.1
@@ -355,53 +385,44 @@ S <- FindClusters(S, resolution = RES)
     ## Number of communities: 9
     ## Elapsed time: 0 seconds
 
-Finally, we use UMAP to get 2 reduced dimensions for
-    visualization
+Finally, we use UMAP to get 2 reduced dimensions for visualization
 
 ``` r
 S <- RunUMAP(S, reduction = "pca", dims = 1:NPC_CLUSTERING)
 ```
 
-    ## Warning: The default method for RunUMAP has changed from calling Python UMAP via reticulate to the R-native UWOT using the cosine metric
-    ## To use Python UMAP via reticulate, set umap.method to 'umap-learn' and metric to 'correlation'
-    ## This message will be shown once per session
+    ## 19:07:36 UMAP embedding parameters a = 0.9922 b = 1.112
 
-    ## 17:48:50 UMAP embedding parameters a = 0.9922 b = 1.112
+    ## 19:07:36 Read 2770 rows and found 25 numeric columns
 
-    ## 17:48:50 Read 2770 rows and found 25 numeric columns
+    ## 19:07:36 Using Annoy for neighbor search, n_neighbors = 30
 
-    ## 17:48:50 Using Annoy for neighbor search, n_neighbors = 30
-
-    ## 17:48:50 Building Annoy index with metric = cosine, n_trees = 50
+    ## 19:07:36 Building Annoy index with metric = cosine, n_trees = 50
 
     ## 0%   10   20   30   40   50   60   70   80   90   100%
 
     ## [----|----|----|----|----|----|----|----|----|----|
 
     ## **************************************************|
-    ## 17:48:50 Writing NN index file to temp file /tmp/RtmpPSXgm7/file6597cbadbe7
-    ## 17:48:50 Searching Annoy index using 1 thread, search_k = 3000
-    ## 17:48:51 Annoy recall = 100%
-    ## 17:48:51 Commencing smooth kNN distance calibration using 1 thread
-    ## 17:48:52 Initializing from normalized Laplacian + noise
-    ## 17:48:52 Commencing optimization for 500 epochs, with 108134 positive edges
-    ## 17:48:58 Optimization finished
+    ## 19:07:37 Writing NN index file to temp file /tmp/RtmpWElyjd/file2b3b66010d5d
+    ## 19:07:37 Searching Annoy index using 1 thread, search_k = 3000
+    ## 19:07:37 Annoy recall = 100%
+    ## 19:07:38 Commencing smooth kNN distance calibration using 1 thread
+    ## 19:07:39 Initializing from normalized Laplacian + noise
+    ## 19:07:39 Commencing optimization for 500 epochs, with 108134 positive edges
+    ## 19:07:46 Optimization finished
 
 ``` r
 DimPlot(S, reduction = "umap", group.by = "seurat_clusters", label = TRUE, label.size = 14)
 ```
 
-    ## Warning: Using `as.character()` on a quosure is deprecated as of rlang 0.3.0.
-    ## Please use `as_label()` or `as_name()` instead.
-    ## This warning is displayed once per session.
-
-![](./output/01_integration/umap_plot-1.png)<!-- -->
+![](./01_integration_output//figures/umap_plot-1.png)<!-- -->
 
 ``` r
 DimPlot(S, reduction = "umap", group.by = "stim",cols = c("grey","red"))
 ```
 
-![](./output/01_integration/umap_condition-1.png)<!-- -->
+![](./01_integration_output//figures/umap_condition-1.png)<!-- -->
 
 ### Extract cluster markers
 
@@ -418,9 +439,6 @@ S <- Seurat_scaledata(S)
     ## Centering and scaling data matrix
 
 ``` r
-MARKERS.OUTDIR <- paste0(OUTDIR,"/markers")
-if(!dir.exists(MARKERS.OUTDIR)) dir.create(MARKERS.OUTDIR);
-
 up <- setNames(vector("list",length=length(levels(S))), levels(S))
 for(idx in names(up)) {
   up.idx <- FindConservedMarkers(S,ident.1 = idx,ident.2 = setdiff(levels(S), idx),
@@ -432,7 +450,7 @@ for(idx in names(up)) {
   up.idx$gene <- rownames(up.idx)
 
   write.table(up.idx[,c("cluster", "gene", cols_names)],
-              file = paste0(MARKERS.OUTDIR,"/cluster",idx,".tsv"),
+              file = paste0(DATADIR,"/wilcox_cluster",idx,".tsv"),
               sep="\t",col.names = TRUE, row.names = FALSE, quote=FALSE
   )
 
@@ -495,20 +513,20 @@ mm = getMarkers(sg, quant = 0.975)
 pp = plotMarkerHeat(sg$inputMat, sg$inputClass, mm$markers, clusterGenes=TRUE, outs = TRUE)
 ```
 
-![](01_integrated_seurat_files/figure-gfm/genesorteR-1.png)<!-- -->
+![](./01_integration_output//figures/genesorteR-1.png)<!-- -->
 
 ``` r
 # #the top 25 genes for each cluster by specificity scores
 # top_markers = apply(sg$specScore, 2, function(x) names(head(sort(x, decreasing = TRUE), n = 25)))
-# write.table(top_markers, paste0(MARKERS.OUTDIR,"/top25markers.tsv"),
+# write.table(top_markers, paste0(MARKERS.DATADIR,"/top25markers.tsv"),
 #       sep="\t",row.names = FALSE,col.names = TRUE,quote=FALSE)
 # 
 
 # Save the tables of genesorteR stats
-write.table(sg$condGeneProb, file=paste0(OUTDIR,"/condGeneProb.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
-write.table(sg$specScore, file=paste0(OUTDIR,"/specScore.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
+write.table(sg$condGeneProb, file=paste0(DATADIR,"/genesorter_condGeneProb.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
+write.table(sg$specScore, file=paste0(DATADIR,"/genesorter_specScore.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
 # Save the object
-saveRDS(sg,file = paste0(OUTDIR,"/sg.rds"))
+saveRDS(sg,file = paste0(DATADIR,"/sg.rds"))
 ```
 
 ## Align clustering with previous studies in atherosclerosis and cell type markers
@@ -520,53 +538,45 @@ GSC_markers <- GeneSetCollection(sapply(colnames(sg$specScore),function(idx) Gen
                                                                                      setName=idx, shortDescription="genesorteR")))
 
 DoHeatmap3(SeuratObject = S, GSC = GSC_markers,
+       fontfamily=fontTXT,
            assay = "RNA", res=NULL, show_hr = FALSE)
 ```
 
-    ## Loading required package: grid
-
-    ## ========================================
-    ## ComplexHeatmap version 2.0.0
-    ## Bioconductor page: http://bioconductor.org/packages/ComplexHeatmap/
-    ## Github page: https://github.com/jokergoo/ComplexHeatmap
-    ## Documentation: http://jokergoo.github.io/ComplexHeatmap-reference
-    ## 
-    ## If you use it in published research, please cite:
-    ## Gu, Z. Complex heatmaps reveal patterns and correlations in multidimensional 
-    ##   genomic data. Bioinformatics 2016.
-    ## ========================================
-
-![](01_integrated_seurat_files/figure-gfm/heatmap_specscore_top10-1.png)<!-- -->
+![](./01_integration_output//figures/heatmap_specscore_top10-1.png)<!-- -->
 
 ### External (literature)
 
 ``` r
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/Wirka_etal2019.gmt"), 
+       fontfamily=fontTXT,
        assay = "RNA", res=NULL, show_hr=FALSE)
 ```
 
-![](./output/01_integration/heatmap_wirka-1.png)<!-- -->
+![](./01_integration_output//figures/heatmap_wirka-1.png)<!-- -->
 
 ``` r
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/markers.gmt"), 
+       fontfamily=fontTXT,
        assay = "RNA", res=NULL, show_hr=FALSE)
 ```
 
-![](./output/01_integration/heatmap_sluimer-1.png)<!-- -->
+![](./01_integration_output//figures/heatmap_sluimer-1.png)<!-- -->
 
 ``` r
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/Cochain_etal2019.gmt"), 
+       fontfamily=fontTXT,
        assay = "RNA", res=NULL, show_hr=FALSE)
 ```
 
-![](./output/01_integration/heatmap_cochain-1.png)<!-- -->
+![](./01_integration_output//figures/heatmap_cochain-1.png)<!-- -->
 
 ``` r
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/Gu_etal2019.gmt"), 
+       fontfamily=fontTXT,
        assay = "RNA", res=NULL, show_hr=FALSE)
 ```
 
-![](./output/01_integration/heatmap_gu-1.png)<!-- -->
+![](./01_integration_output//figures/heatmap_gu-1.png)<!-- -->
 
 ## Density of clusters per conditions
 
@@ -638,24 +648,6 @@ g2 <- ggplot(data = DATA, aes(x = cluster, y = S2, fill=cluster)) +xlab(NULL)+
 
 ``` r
 library(gridExtra)
-```
-
-    ## 
-    ## Attaching package: 'gridExtra'
-
-    ## The following object is masked from 'package:dplyr':
-    ## 
-    ##     combine
-
-    ## The following object is masked from 'package:Biobase':
-    ## 
-    ##     combine
-
-    ## The following object is masked from 'package:BiocGenerics':
-    ## 
-    ##     combine
-
-``` r
 gg1 <- ggplot_gtable(ggplot_build(g1))
 gg2 <- ggplot_gtable(ggplot_build(g2))
 gg.mid <- ggplot_gtable(ggplot_build(g.mid))
@@ -665,10 +657,10 @@ grid.arrange(gg1,gg.mid,gg2,ncol=3,widths=c(4/9,1/9,4/9),
                                gp=gpar(fontsize=16,font=2)))
 ```
 
-![](./output/01_integration/cluster_density-1.png)<!-- -->
+![](./01_integration_output//figures/cluster_density-1.png)<!-- -->
 
 ``` r
-write.table(DATA,paste0(OUTDIR,"/cluster_density.tsv"),sep="\t",col.names=TRUE, row.names=FALSE, quote=FALSE)
+write.table(DATA,paste0(DATADIR,"/cluster_density.tsv"),sep="\t",col.names=TRUE, row.names=FALSE, quote=FALSE)
 ```
 
 ## Additional diagnostics
@@ -683,12 +675,12 @@ d2 <- FeaturePlot(S, reduction = "umap", features = "nCount_RNA")
 plot_grid(d1, d2)
 ```
 
-![](./output/01_integration/umap_mt-1.png)<!-- -->
+![](./01_integration_output//figures/umap_mt-1.png)<!-- -->
 
 ## Save the Seurat Object
 
 ``` r
-saveRDS(S, paste0(OUTDIR,"/S.rds"));
+saveRDS(S, paste0(DATADIR,"/S.rds"));
 ```
 
 ## SessionInfo
@@ -718,55 +710,56 @@ sessionInfo()
     ##  [8] datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] gridExtra_2.3        ComplexHeatmap_2.0.0 optparse_1.6.2      
-    ##  [4] genesorteR_0.3.1     Matrix_1.2-17        cowplot_1.0.0       
-    ##  [7] clustree_0.4.1       ggraph_2.0.0.9000    ggplot2_3.2.1       
-    ## [10] dplyr_0.8.3          GSEABase_1.46.0      graph_1.62.0        
-    ## [13] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
-    ## [16] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
-    ## [19] BiocGenerics_0.30.0  Seurat_3.1.0        
+    ##  [1] extrafont_0.17       gridExtra_2.3        ComplexHeatmap_2.0.0
+    ##  [4] optparse_1.6.2       genesorteR_0.3.1     Matrix_1.2-17       
+    ##  [7] cowplot_1.0.0        clustree_0.4.1       ggraph_2.0.0.9000   
+    ## [10] ggplot2_3.2.1        dplyr_0.8.3          GSEABase_1.46.0     
+    ## [13] graph_1.62.0         annotate_1.62.0      XML_3.98-1.20       
+    ## [16] AnnotationDbi_1.46.1 IRanges_2.18.2       S4Vectors_0.22.1    
+    ## [19] Biobase_2.44.0       BiocGenerics_0.30.0  Seurat_3.1.0        
+    ## [22] rmarkdown_1.15       nvimcom_0.9-82      
     ## 
     ## loaded via a namespace (and not attached):
-    ##   [1] backports_1.1.4     circlize_0.4.7      plyr_1.8.4         
+    ##   [1] circlize_0.4.7      backports_1.1.4     plyr_1.8.4         
     ##   [4] igraph_1.2.4.1      lazyeval_0.2.2      splines_3.6.1      
     ##   [7] listenv_0.7.0       digest_0.6.21       htmltools_0.3.6    
     ##  [10] viridis_0.5.1       gdata_2.18.0        magrittr_1.5       
     ##  [13] checkmate_1.9.4     memoise_1.1.0       cluster_2.1.0      
     ##  [16] ROCR_1.0-7          globals_0.12.4      graphlayouts_0.5.0 
-    ##  [19] RcppParallel_4.4.3  R.utils_2.9.0       colorspace_1.4-1   
-    ##  [22] blob_1.2.0          ggrepel_0.8.1       xfun_0.9           
-    ##  [25] crayon_1.3.4        RCurl_1.95-4.12     jsonlite_1.6       
-    ##  [28] zeallot_0.1.0       survival_2.44-1.1   zoo_1.8-6          
-    ##  [31] ape_5.3             glue_1.3.1          polyclip_1.10-0    
-    ##  [34] gtable_0.3.0        leiden_0.3.1        GetoptLong_0.1.7   
-    ##  [37] shape_1.4.4         future.apply_1.3.0  scales_1.0.0       
-    ##  [40] pheatmap_1.0.12     DBI_1.0.0           bibtex_0.4.2       
-    ##  [43] Rcpp_1.0.2          metap_1.1           viridisLite_0.3.0  
-    ##  [46] xtable_1.8-4        clue_0.3-57         reticulate_1.13    
-    ##  [49] bit_1.1-14          rsvd_1.0.2          mclust_5.4.5       
-    ##  [52] SDMTools_1.1-221.1  tsne_0.1-3          htmlwidgets_1.3    
-    ##  [55] httr_1.4.1          getopt_1.20.3       gplots_3.0.1.1     
-    ##  [58] RColorBrewer_1.1-2  ica_1.0-2           pkgconfig_2.0.3    
-    ##  [61] R.methodsS3_1.7.1   farver_1.1.0        uwot_0.1.4         
-    ##  [64] tidyselect_0.2.5    labeling_0.3        rlang_0.4.0        
-    ##  [67] reshape2_1.4.3      munsell_0.5.0       tools_3.6.1        
-    ##  [70] RSQLite_2.1.2       ggridges_0.5.1      evaluate_0.14      
-    ##  [73] stringr_1.4.0       yaml_2.2.0          npsurv_0.4-0       
-    ##  [76] knitr_1.24          bit64_0.9-7         fitdistrplus_1.0-14
-    ##  [79] tidygraph_1.1.2     caTools_1.17.1.2    purrr_0.3.2        
-    ##  [82] RANN_2.6.1          pbapply_1.4-2       future_1.14.0      
-    ##  [85] nlme_3.1-141        R.oo_1.22.0         compiler_3.6.1     
-    ##  [88] plotly_4.9.0        png_0.1-7           lsei_1.2-0         
-    ##  [91] tibble_2.1.3        tweenr_1.0.1        stringi_1.4.3      
-    ##  [94] RSpectra_0.15-0     lattice_0.20-38     vctrs_0.2.0        
-    ##  [97] pillar_1.4.2        lifecycle_0.1.0     Rdpack_0.11-0      
-    ## [100] lmtest_0.9-37       GlobalOptions_0.1.0 RcppAnnoy_0.0.13   
-    ## [103] data.table_1.12.8   bitops_1.0-6        irlba_2.3.3        
-    ## [106] gbRd_0.4-11         R6_2.4.0            KernSmooth_2.23-16 
-    ## [109] codetools_0.2-16    MASS_7.3-51.4       gtools_3.8.1       
-    ## [112] assertthat_0.2.1    rjson_0.2.20        withr_2.1.2        
-    ## [115] sctransform_0.2.0   tidyr_1.0.0         rmarkdown_1.15     
-    ## [118] Rtsne_0.15          ggforce_0.3.1
+    ##  [19] RcppParallel_4.4.3  R.utils_2.9.0       extrafontdb_1.0    
+    ##  [22] colorspace_1.4-1    blob_1.2.0          ggrepel_0.8.1      
+    ##  [25] xfun_0.9            crayon_1.3.4        RCurl_1.95-4.12    
+    ##  [28] jsonlite_1.6        zeallot_0.1.0       survival_2.44-1.1  
+    ##  [31] zoo_1.8-6           ape_5.3             glue_1.3.1         
+    ##  [34] polyclip_1.10-0     gtable_0.3.0        leiden_0.3.1       
+    ##  [37] GetoptLong_0.1.7    Rttf2pt1_1.3.8      shape_1.4.4        
+    ##  [40] future.apply_1.3.0  scales_1.0.0        pheatmap_1.0.12    
+    ##  [43] DBI_1.0.0           bibtex_0.4.2        Rcpp_1.0.2         
+    ##  [46] metap_1.1           viridisLite_0.3.0   xtable_1.8-4       
+    ##  [49] clue_0.3-57         reticulate_1.13     bit_1.1-14         
+    ##  [52] rsvd_1.0.2          mclust_5.4.5        SDMTools_1.1-221.1 
+    ##  [55] tsne_0.1-3          htmlwidgets_1.3     httr_1.4.1         
+    ##  [58] getopt_1.20.3       gplots_3.0.1.1      RColorBrewer_1.1-2 
+    ##  [61] ica_1.0-2           pkgconfig_2.0.3     R.methodsS3_1.7.1  
+    ##  [64] farver_1.1.0        uwot_0.1.4          tidyselect_0.2.5   
+    ##  [67] labeling_0.3        rlang_0.4.0         reshape2_1.4.3     
+    ##  [70] munsell_0.5.0       tools_3.6.1         RSQLite_2.1.2      
+    ##  [73] ggridges_0.5.1      evaluate_0.14       stringr_1.4.0      
+    ##  [76] yaml_2.2.0          npsurv_0.4-0        knitr_1.24         
+    ##  [79] bit64_0.9-7         fitdistrplus_1.0-14 tidygraph_1.1.2    
+    ##  [82] caTools_1.17.1.2    purrr_0.3.2         RANN_2.6.1         
+    ##  [85] pbapply_1.4-2       future_1.14.0       nlme_3.1-141       
+    ##  [88] R.oo_1.22.0         compiler_3.6.1      plotly_4.9.0       
+    ##  [91] png_0.1-7           lsei_1.2-0          tibble_2.1.3       
+    ##  [94] tweenr_1.0.1        stringi_1.4.3       RSpectra_0.15-0    
+    ##  [97] lattice_0.20-38     vctrs_0.2.0         pillar_1.4.2       
+    ## [100] lifecycle_0.1.0     Rdpack_0.11-0       lmtest_0.9-37      
+    ## [103] GlobalOptions_0.1.0 RcppAnnoy_0.0.13    data.table_1.12.8  
+    ## [106] bitops_1.0-6        irlba_2.3.3         gbRd_0.4-11        
+    ## [109] R6_2.4.0            KernSmooth_2.23-16  codetools_0.2-16   
+    ## [112] MASS_7.3-51.4       gtools_3.8.1        assertthat_0.2.1   
+    ## [115] rjson_0.2.20        withr_2.1.2         sctransform_0.2.0  
+    ## [118] tidyr_1.0.0         Rtsne_0.15          ggforce_0.3.1
 
 ``` r
 {                                                                                                                                                                                                           

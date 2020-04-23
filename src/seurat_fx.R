@@ -168,7 +168,7 @@ DoHeatmap2 <- function(SeuratObject, GSC, assay="RNA", res=0.5, show_hr=TRUE) {
 
 
 # Enhanced DoHeatmap function
-DoHeatmap3 <- function(SeuratObject, GSC, assay="RNA", res=0.5, show_hr=TRUE, row_names_size=7) {
+DoHeatmap3 <- function(SeuratObject, GSC, assay="RNA", res=0.5, show_hr=TRUE, row_names_size=7, dat="scale", column_title_size=14, fontfamily="Arial") {
   library(ComplexHeatmap)
   
   gg_color_hue <- function(n) {
@@ -189,10 +189,20 @@ DoHeatmap3 <- function(SeuratObject, GSC, assay="RNA", res=0.5, show_hr=TRUE, ro
   
   genes <- unlist(geneIds(GSC))
   genes.cols <- unlist(sapply(names(GSC), function(abbn) rep(abbn, length(geneIds(GSC)[[abbn]]))))
-  mat <- SeuratObject@assays[[assay]]@scale.data
+  if(dat=="scale") {
+	mat <- SeuratObject@assays[[assay]]@scale.data
+  	f1 <-  circlize::colorRamp2(c(-2,0,+2), c("purple", "black", "yellow"))
+  } else if(dat=="data") {
+	mat <- as.matrix(SeuratObject@assays[[assay]]@data)
+  	f1 <-  circlize::colorRamp2(c(-2,0,+2), c("purple", "black", "yellow"))
+  } else {
+	  stop("ERROR: data type is not supported")
+  }
   
   if(is.null(res)) {
-    cl <- as.character(SeuratObject@meta.data[,"seurat_clusters"])
+     cl <- as.character(SeuratObject@meta.data[,"seurat_clusters"])
+  } else if(res=="Idents") {
+     cl <- Idents(SeuratObject)
   } else {
     cl <- as.character(SeuratObject@meta.data[,paste0(assay,"_snn_res.",res)]) 
   }
@@ -204,7 +214,13 @@ DoHeatmap3 <- function(SeuratObject, GSC, assay="RNA", res=0.5, show_hr=TRUE, ro
   mat <- mat[,ord]
   
   cl <- cl[ord]
-  cl.cols <- setNames(gg_color_hue(length(unique(cl))),unique(as.character(sort(as.numeric(cl)))))
+  if(is.null(res)) {
+  	cl.cols <- setNames(gg_color_hue(length(unique(cl))),unique(as.character(sort(as.numeric(cl)))))
+  } else if(res=="Idents") {
+  	cl.cols <- setNames(gg_color_hue(length(unique(cl))),levels((cl)))
+  } else {
+  	cl.cols <- setNames(gg_color_hue(length(unique(cl))),unique(as.character(sort(as.numeric(cl)))))
+  }
   
   origin <- origin[ord]
   if(length(unique(origin)) > 2) {
@@ -223,16 +239,31 @@ DoHeatmap3 <- function(SeuratObject, GSC, assay="RNA", res=0.5, show_hr=TRUE, ro
   )
   mat2 <- mat2[genes,]
   
-  hc <- HeatmapAnnotation(df=data.frame("cluster"=cl, "origin"=origin),
+  hc <- HeatmapAnnotation(df=data.frame("cluster"=as.character(cl), "origin"=origin, row.names=colnames(mat2)),
                           col = list("cluster"=cl.cols, "origin"=origin.cols),
                           show_annotation_name = TRUE,annotation_name_side = "left",
-                          show_legend = c(FALSE,TRUE),
-                          annotation_legend_param= list(legend_height = unit(8, "cm"),
-                                                        grid_width = unit(5, "mm"),
-                                                        title_gp=gpar(fontsize=16),
-                                                        # at=c(-2.5,-2,-1,0,1,2,2.5),
-                                                        # labels = c("","-2","-1","0","1","2",""),
-                                                        labels_gp = gpar(fontsize = 14)))
+                          show_legend = c(TRUE,TRUE),
+                          annotation_legend_param= list(
+							cluster=list(legend_height = unit(8, "cm"),
+								     grid_width = unit(5, "mm"),
+								     title_gp=gpar(fontsize=16, 
+										   fontfamily=fontfamily),
+								     nrow=1,
+								     # at=c(-2.5,-2,-1,0,1,2,2.5),
+								     # labels = c("","-2","-1","0","1","2",""),
+								     labels_gp = gpar(fontsize = 14,
+										      fontfamily = fontfamily)),
+							"origin"=list(legend_height = unit(8, "cm"),
+								     grid_width = unit(5, "mm"),
+								     title_gp=gpar(fontsize=16,
+										   fontfamily=fontfamily),
+								     nrow=1,
+								     # at=c(-2.5,-2,-1,0,1,2,2.5),
+								     # labels = c("","-2","-1","0","1","2",""),
+								     labels_gp = gpar(fontsize = 14,
+										      fontfamily = fontfamily))
+
+			  ))
   
   # hr <- rowAnnotation(df=data.frame(markers=genes.cols), show_annotation_name = FALSE)
   hr_classes <- gsub("\\-?[0-9]+$","",genes.cols)
@@ -245,29 +276,41 @@ DoHeatmap3 <- function(SeuratObject, GSC, assay="RNA", res=0.5, show_hr=TRUE, ro
   hr <- rowAnnotation(df=data.frame("type"=hr_classes), show_annotation_name = FALSE,
                       col=list("type"=setNames(gg_color_hue2(length(unique(hr_classes))),
                                                unique(hr_classes))),
-                      annotation_legend_param= list(legend_height = unit(4, "cm"),
+                      annotation_legend_param= list(legend_height = unit(8, "cm"),
                                                     grid_width = unit(5, "mm"),
-                                                    title_gp=gpar(fontsize=16),
+                                                    title_gp=gpar(fontsize=16,
+								  fontfamily=fontfamily),
                                                     # at=c(-2.5,-2,-1,0,1,2,2.5),
                                                     # labels = c("","-2","-1","0","1","2",""),
-                                                    labels_gp = gpar(fontsize = 14)))
+                                                    labels_gp = gpar(fontsize = 14,
+								     fontfamily=fontfamily)))
+  # Choose main legend scale
+  if(dat=="scale") {
+  	f1 <-  circlize::colorRamp2(c(-2,0,+2), c("purple", "black", "yellow"))
+  } else if(dat=="data") {
+  	f1 <-  circlize::colorRamp2(c(min(as.vector(mat2)),
+					max(as.vector(mat2))),
+				      c("purple","yellow"))
+  } else {
+	  stop("ERROR: data type is not supported")
+  }
   
-  f1 <-  circlize::colorRamp2(c(-2,0,+2), c("purple", "black", "yellow"))
+
   hp <- Heatmap(mat2, cluster_rows = FALSE, cluster_columns = FALSE,col = f1,
                 name="Expression",
-                top_annotation = hc, bottom_annotation = hc,
+                top_annotation = hc,# bottom_annotation = hc,
                 split=factor(genes.cols, levels=unique(genes.cols)),row_title_rot = 0,row_gap = unit(1.5, "mm"), 
-                column_split = factor(cl, levels=unique(cl)), column_title_rot=00, column_gap = unit(0.7, "mm"),
+                column_split = factor(cl, levels=unique(cl)), column_title_rot=00, column_title_gp = gpar(fontsize=column_title_size,fontfamily=fontfamily), column_gap = unit(0.7, "mm"),
                 # left_annotation = rowAnnotation(foo=anno_block(gpar(fill=table(genes.cols)[unique(genes.cols)]),
                 #                                                labels=unique(genes.cols),
                 #                                                labels_gp=gpar(col="white",fontsize=10))),
                 heatmap_legend_param= list(legend_height = unit(4, "cm"),
-                                           title_gp=gpar(fontsize=16),
+                                           title_gp=gpar(fontsize=16, fontfamily=fontfamily),
                                            # at=c(-2.5,-2,-1,0,1,2,2.5),
                                            # labels = c("","-2","-1","0","1","2",""),
-                                           labels_gp = gpar(fontsize = 15)),
+                                           labels_gp = gpar(fontsize = 15, fontfamily=fontfamily)),
                 show_column_names = FALSE, row_names_side = "left",
-                row_names_gp = gpar(fontsize=row_names_size))
+                row_names_gp = gpar(fontsize=row_names_size, fontfamily=fontfamily))
   if(show_hr) {
     hh <- hp + hr 
   } else {

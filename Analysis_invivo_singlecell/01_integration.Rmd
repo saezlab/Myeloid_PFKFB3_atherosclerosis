@@ -1,11 +1,44 @@
 ---
 title: "Integrated analysis with Seurat of atherosclerotic plaques in the context of Myeloid PHD2 deficiency"
-author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+Single-cell transcriptomics profiling of atherosclerotic plaques from a pooled sample of 
+Myeloid-lineage PHD2cKO and WT mice were done. Herein we carry out a standard workflow using 
+Seurat package, which is used to integrate both samples and identify cell types in the bulk 
+sample. Finally, several comparisons with several collections of markers in the biological 
+context are performed to test whether the unsupervised clustering recapitulates the expected 
+cell populations in the atherosclerotic plaques.
+
+Most of parameters of the analysis used here are based on default settings of Seurat. 
+However we have choosen a certain number or principal components based on exploratory analysis on the outcome of those.
+We opt to keep low resolution in the unsupervised clustering to identify the supercluster of 
+macrophages, later it will be dissected in a second round of unsupervised clustering.
+
+## Setup
+We define a random seed number for reproducibility, file structure for the output, 
+and what is more important: the parameters of the standard analysis with Seurat. 
+
+### Environment
+```{r env}
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./01_integration_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
 ```
 
 ## Load libraries
@@ -19,24 +52,23 @@ suppressPackageStartupMessages(require(genesorteR))
 suppressPackageStartupMessages(require(optparse))
 # Get some functions for Seurat analysis
 source("../src/seurat_fx.R")
-set.seed(1234)
+source("../src/graphics.R")
 ```
 
-## Setting-up environment
 ### Input parameters
 ```{r}
 # Define input parameters
 option_list = list(
-  make_option(c("--CASE_INPUT"), action="store", default="../data/sc/CK64/filtered_feature_bc_matrix/", type='character',
+  make_option(c("--CASE_INPUT"), action="store", 
+	      default="../data/sc/CK64/filtered_feature_bc_matrix/", type='character',
               help="cellranger count folder that contains the output matrices"),
   make_option(c("--CASE_SNAME"), action="store", default="PHD2cKO", type='character',
               help="Sample name"),
-  make_option(c("--CONTROL_INPUT"), action="store", default="../data/sc/CK62/filtered_feature_bc_matrix/", type='character',
+  make_option(c("--CONTROL_INPUT"), action="store", 
+	      default="../data/sc/CK62/filtered_feature_bc_matrix/", type='character',
               help="cellranger count folder that contains the output matrices"),
   make_option(c("--CONTROL_SNAME"), action="store", default="WT", type='character',
               help="Sample name"),
-  make_option(c("--OUTDIR"), action="store", default="./output/01_integration/", type='character',
-              help="Output directory"),
   make_option(c("--NPC"), action="store", default=50, type='numeric',
               help="number of principal components to calculate."),
   make_option(c("--NPC_ANCHOR"), action="store", default=20, type='numeric',
@@ -57,11 +89,6 @@ for(user_input in names(opt)) {
   cat(paste0("[INFO] ",user_input," => ",opt[[user_input]],"\n"),file = stdout())
   assign(user_input,opt[[user_input]])
 }
-```
-
-### Output directory
-```{r}
-if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
 ```
 
 ## Load data
@@ -99,8 +126,6 @@ DefaultAssay(S) <- "integrated"
 ```
 
 ## Cell clustering and dimensionality reduction
-We use the default parameters from Seurat to do so.
-
 First scale the data and get principal components
 ```{r}
 S <- ScaleData(S, verbose = FALSE)
@@ -118,7 +143,7 @@ S <- FindNeighbors(S, reduction = "pca", dims = 1:NPC_CLUSTERING)
 S <- FindClusters(S, resolution = seq(from=0.1, to=1.5, by=0.1))
 ```
 
-```{r clustree, fig.width=14, fig.height=7, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r clustree, fig.width=14, fig.height=7, dpi=300}
 clustree(S, prefix = "integrated_snn_res.")
 ```
 
@@ -132,11 +157,11 @@ Finally, we use UMAP to get 2 reduced dimensions for visualization
 S <- RunUMAP(S, reduction = "pca", dims = 1:NPC_CLUSTERING)
 ```
 
-```{r umap_plot, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r umap_plot, dpi=300}
 DimPlot(S, reduction = "umap", group.by = "seurat_clusters", label = TRUE, label.size = 14)
 ```
 
-```{r umap_condition, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r umap_condition, dpi=300}
 DimPlot(S, reduction = "umap", group.by = "stim",cols = c("grey","red"))
 ```
 
@@ -152,9 +177,6 @@ S <- Seurat_scaledata(S)
 ```
 
 ```{r wilcox_test}
-MARKERS.OUTDIR <- paste0(OUTDIR,"/markers")
-if(!dir.exists(MARKERS.OUTDIR)) dir.create(MARKERS.OUTDIR);
-
 up <- setNames(vector("list",length=length(levels(S))), levels(S))
 for(idx in names(up)) {
   up.idx <- FindConservedMarkers(S,ident.1 = idx,ident.2 = setdiff(levels(S), idx),
@@ -166,7 +188,7 @@ for(idx in names(up)) {
   up.idx$gene <- rownames(up.idx)
 
   write.table(up.idx[,c("cluster", "gene", cols_names)],
-              file = paste0(MARKERS.OUTDIR,"/cluster",idx,".tsv"),
+              file = paste0(DATADIR,"/wilcox_cluster",idx,".tsv"),
               sep="\t",col.names = TRUE, row.names = FALSE, quote=FALSE
   )
 
@@ -185,44 +207,49 @@ pp = plotMarkerHeat(sg$inputMat, sg$inputClass, mm$markers, clusterGenes=TRUE, o
 
 # #the top 25 genes for each cluster by specificity scores
 # top_markers = apply(sg$specScore, 2, function(x) names(head(sort(x, decreasing = TRUE), n = 25)))
-# write.table(top_markers, paste0(MARKERS.OUTDIR,"/top25markers.tsv"),
+# write.table(top_markers, paste0(MARKERS.DATADIR,"/top25markers.tsv"),
 # 	    sep="\t",row.names = FALSE,col.names = TRUE,quote=FALSE)
 # 
 
 # Save the tables of genesorteR stats
-write.table(sg$condGeneProb, file=paste0(OUTDIR,"/condGeneProb.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
-write.table(sg$specScore, file=paste0(OUTDIR,"/specScore.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
+write.table(sg$condGeneProb, file=paste0(DATADIR,"/genesorter_condGeneProb.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
+write.table(sg$specScore, file=paste0(DATADIR,"/genesorter_specScore.tsv"),sep="\t", row.names=TRUE, col.names = NA, quote=FALSE)
 # Save the object
-saveRDS(sg,file = paste0(OUTDIR,"/sg.rds"))
+saveRDS(sg,file = paste0(DATADIR,"/sg.rds"))
 ```
 
 ## Align clustering with previous studies in atherosclerosis and cell type markers
 ### Internal
-```{r heatmap_specscore_top10, fig.width=14, fig.height=9}
+```{r heatmap_specscore_top10, fig.width=14, fig.height=9, warning=FALSE}
 GSC_markers <- GeneSetCollection(sapply(colnames(sg$specScore),function(idx) GeneSet(names(head(sort(sg$specScore[,idx], decreasing = TRUE), n = 10)),
                                                                                      setName=idx, shortDescription="genesorteR")))
 
 DoHeatmap3(SeuratObject = S, GSC = GSC_markers,
+	   fontfamily=fontTXT,
            assay = "RNA", res=NULL, show_hr = FALSE)
 ```
 
 ### External (literature)
-```{r heatmap_wirka, fig.width=14,fig.height=14, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r heatmap_wirka, fig.width=14,fig.height=14, dpi=300, warning=FALSE}
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/Wirka_etal2019.gmt"), 
+	   fontfamily=fontTXT,
 	   assay = "RNA", res=NULL, show_hr=FALSE)
 ```
 
-```{r heatmap_sluimer, fig.width=14, fig.height=10, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r heatmap_sluimer, fig.width=14, fig.height=10, dpi=300, warning=FALSE}
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/markers.gmt"), 
+	   fontfamily=fontTXT,
 	   assay = "RNA", res=NULL, show_hr=FALSE)
 ```
 
-```{r heatmap_cochain, fig.width=14, fig.height=14, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r heatmap_cochain, fig.width=14, fig.height=14, dpi=300, warning=FALSE}
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/Cochain_etal2019.gmt"), 
+	   fontfamily=fontTXT,
 	   assay = "RNA", res=NULL, show_hr=FALSE)
 ```
-```{r heatmap_gu, fig.width=14, fig.height=10, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r heatmap_gu, fig.width=14, fig.height=10, dpi=300, warning=FALSE}
 DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/Gu_etal2019.gmt"), 
+	   fontfamily=fontTXT,
 	   assay = "RNA", res=NULL, show_hr=FALSE)
 ```
 
@@ -242,7 +269,7 @@ DATA <- data.frame(cluster=factor(levels(S), levels(S)),
                    S2=as.numeric(cl.prop[[2]]))
 ```
 
-```{r cluster_density, fig.width=7, fig.height=9, dpi=300, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r cluster_density, fig.width=7, fig.height=9, dpi=300}
 # Source: https://stackoverflow.com/questions/18265941/two-horizontal-bar-charts-with-shared-axis-in-ggplot2-similar-to-population-pyr
 library(grid)
 g.mid<-ggplot(DATA,aes(x=1,y=cluster))+geom_text(aes(label=as.character(DATA$cluster)), size=14)+
@@ -302,13 +329,13 @@ grid.arrange(gg1,gg.mid,gg2,ncol=3,widths=c(4/9,1/9,4/9),
 ```
 
 ```{r density_cluster_tab}
-write.table(DATA,paste0(OUTDIR,"/cluster_density.tsv"),sep="\t",col.names=TRUE, row.names=FALSE, quote=FALSE)
+write.table(DATA,paste0(DATADIR,"/cluster_density.tsv"),sep="\t",col.names=TRUE, row.names=FALSE, quote=FALSE)
 ```
 
 ## Additional diagnostics
 Whether clustering is driven by mt
 
-```{r umap_mt, dpi=300, fig.width=14, fig.height=6, fig.path="./output/01_integration/", dev=c('png','tiff')}
+```{r umap_mt, dpi=300, fig.width=14, fig.height=6}
 # Add mitocondrial genes
 S[["percent.mt"]] <- PercentageFeatureSet(S, pattern = "^mt-")
 d1 <- FeaturePlot(S, reduction = "umap", features = "percent.mt")
@@ -318,7 +345,7 @@ plot_grid(d1, d2)
 
 ## Save the Seurat Object
 ```{r seurat_obj}
-saveRDS(S, paste0(OUTDIR,"/S.rds"));
+saveRDS(S, paste0(DATADIR,"/S.rds"));
 ```
 
 ## SessionInfo

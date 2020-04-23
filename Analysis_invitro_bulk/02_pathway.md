@@ -1,6 +1,7 @@
 Inference of TF activities in Mieloid PHD2 deficiency in atherogenesis
 ================
-Javier Perales-Paton - <javier.perales@bioquant.uni-heidelberg.de>
+Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de> -
+ORCID: 0000-0003-0780-6683
 
 We will use the ranking of differentially expressed genes by the
 moderated-t statistics to estimate the pathways activities using

@@ -1,13 +1,16 @@
 Ligand activity analysis on in-vitro PHD2 experiment
 ================
-Javier Perales Patón - <javier.perales@bioquant.uni-heidelberg.de>
+Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de> -
+ORCID: 0000-0003-0780-6683
 
 Here we will perform a NicheNet ligand activity analysis with the
-in-vitro signatures from PHD2-KO Macrophages cocultured with fibroblasts
-(mouse). This consists on how ligands affect gene expression in
-co-cultured through ligand-receptor interactions. For the analysis, it
-is required to have a clear signature of genes that are responsive of
-this interactions and related to the phenotype.
+in-vitro signatures from PHD2-KO Macrophages medium conditioned with
+fibroblasts (mouse). This consists on how ligands affect gene expression
+in co-cultured through ligand-receptor interactions. For the analysis,
+it is required to have a clear signature of genes that are responsive of
+this interactions and related to the phenotype. Thus, we focused on gene
+sets enriched in the phenotype of interest (pro-fibrotic fibroblasts)
+and up-regulated ligands from the senders (Macrophage PHD2cKO).
 
 The pipeline of a basic NicheNet analysis consist mainly of the
 following steps:
@@ -36,13 +39,29 @@ analysis
 
 ## Step 0: Load required packages, NicheNet’s ligand-target prior model and processed expression data of interacting cells
 
+## set env
+
+Define random seed for reproducible analysis.
+
 ``` r
+# Seed number
 set.seed(1234)
-OUTDIR <- "./output/03_ligands"
-if(!dir.exists(OUTDIR)) dir.create(OUTDIR)
+# Output directory
+OUTDIR <- "./04_ligand_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
 ```
 
-Packages:
+### Load libraries
+
+Essential packages for the analysis.
 
 ``` r
 library(nichenetr)
@@ -75,11 +94,10 @@ rownames(ligand_target_matrix) = ligand_target_matrix %>% rownames() %>% convert
 ligand_target_matrix = ligand_target_matrix %>% .[!is.na(rownames(ligand_target_matrix)), !is.na(colnames(ligand_target_matrix))]
 ```
 
-Expression data of interacting cells: publicly available single-cell
-data from CAF and malignant cells from HNSCC fibs:
+Expression data of interacting cells: Macrophages.
 
 ``` r
-v <- readRDS("./output/01_bulk_dge/v.rds")
+v <- readRDS("./01_DGE_output/data/v.rds")
 expression = v$E
 sample_info = v$target # contains meta-information about the samples
 ```
@@ -95,22 +113,21 @@ First we have to define which genes are expressed in sender cells
 
 ``` r
 CPM_cutoff <- 10
-N_samples <- c("Mac"=sum(grepl("^MC_", sample_info$group)), "Fib"=sum(grepl("^Fib_", sample_info$group)))
+N_samples <- c("Mac"=sum(grepl("^MC_", sample_info$group)), 
+           "Fib"=sum(grepl("^Fib_", sample_info$group)))
 
 expressed_genes_sender = rownames(expression)[rowSums(2^expression[,grep("^MC_", sample_info$group)] > CPM_cutoff) > N_samples["Mac"]*0.5]
 # Here we use the DEG analysis to define important ligands
-eBay <- readRDS("./output/01_bulk_dge/eBay.rds")
+eBay <- readRDS("./01_DGE_output/data/eBay.rds")
 
 topTab_sender <- topTable(eBay, coef="MC_PHD2", number=Inf) # FDR adjust
+# Differentially expressed genes from step 01
 DEup_sender <- topTab_sender$genes[topTab_sender$P.Value < 0.05 & topTab_sender$logFC > 0]
-
-# twoFC_sender <- eBay$coefficients[,"MC_PHD2"]
-# twoFC_sender <- names(twoFC_sender[twoFC_sender > 1])
-# expressed_genes_sender <- twoFC_sender
 
 expressed_genes_receiver = rownames(expression)[rowSums(2^expression[,grep("^Fib_", sample_info$group)] > CPM_cutoff) > N_samples["Fib"]*0.5]
 
-# Check the number of expressed genes: should be a 'reasonable' number of total expressed genes in a cell type, e.g. between 5000-10000 (and not 500 or 20000)
+# Check the number of expressed genes: should be a 'reasonable' number of 
+# total expressed genes in a cell type, e.g. between 5000-10000 (and not 500 or 20000)
 length(expressed_genes_sender)
 ```
 
@@ -127,12 +144,11 @@ length(expressed_genes_receiver)
 As gene set of interest, we consider the genes of which the expression
 is possibly affected due to communication with other cells. The
 definition of this gene set depends on your research question and is a
-crucial step in the use of NicheNet.
-
-Because we here want to investigate how Macrophages regulate the
-expression of Fib signature genes in malignant cells, we will use the
-Fib signature gene set defined by Puram et al. as gene set of interest
-and use all genes expressed in malignant cells as background of
+crucial step in the use of NicheNet. Because we here want to investigate
+how Macrophages regulate the expression of Fibroblasts pro-fibrotic
+signature, we will use the leading edge genes from the Matrisome gene
+sets enriched in this phenoty as targt genes for the analysis. And all
+genes expressed in fibroblasts as background of
 genes.
 
 ``` r
@@ -163,11 +179,16 @@ head(background_expressed_genes)
 
 ## Step 3: Define a set of potential ligands
 
-As potentially active ligands, we will use ligands that are 1) expressed
-by Macrophages and 2) can bind a (putative) receptor expressed by
-malignant cells. Putative ligand-receptor links were gathered from
-NicheNet’s ligand-receptor data
+As potentially active ligands, we will use ligands that are
+
+1.  Expressed by Macrophages and up-regulated upon PHD2 knock-out
+    perturbation.
+2.  can bind a (putative) receptor expressed by malignant cells.
+    Putative ligand-receptor links were gathered from NicheNet’s
+    ligand-receptor data
 sources.
+
+<!-- end list -->
 
 ``` r
 # lr_network = readRDS(url("https://zenodo.org/record/3260758/files/lr_network.rds"))
@@ -187,7 +208,8 @@ expressed_ligands <- intersect(expressed_ligands, DEup_sender)
 receptors = lr_network %>% pull(to) %>% unique()
 expressed_receptors = intersect(receptors,expressed_genes_receiver)
 
-lr_network_expressed = lr_network %>% filter(from %in% expressed_ligands & to %in% expressed_receptors) 
+lr_network_expressed = lr_network %>% filter(from %in% expressed_ligands & 
+                         to %in% expressed_receptors) 
 head(lr_network_expressed)
 ```
 
@@ -216,13 +238,16 @@ head(potential_ligands)
 
 Now perform the ligand activity analysis: in this analysis, we will
 calculate the ligand activity of each ligand, or in other words, we will
-assess how well each CAF-ligand can predict the Fib signature gene set
-compared to the background of expressed genes (predict whether a gene
-belongs to the Fib signature program or
-not).
+assess how well each Macrophage-derived ligands can predict the
+Fibroblasts signature as compared to the background of expressed genes
+(i.e. predict whether a gene belongs to the Fibroblast pro-fibrotic
+program or not).
 
 ``` r
-ligand_activities = predict_ligand_activities(geneset = geneset_oi, background_expressed_genes = background_expressed_genes, ligand_target_matrix = ligand_target_matrix, potential_ligands = potential_ligands)
+ligand_activities = predict_ligand_activities(geneset = geneset_oi, 
+                          background_expressed_genes = background_expressed_genes, 
+                          ligand_target_matrix = ligand_target_matrix, 
+                          potential_ligands = potential_ligands)
 ```
 
 Now, we want to rank the ligands based on their ligand activity. In
@@ -231,7 +256,7 @@ Nichnet validation, they showed that the pearson correlation coefficient
 transcriptional response was the most informative measure to define
 ligand activity. Therefore, we will rank the ligands based on their
 pearson correlation coefficient. This allows us to prioritize
-Macrophage-released ligands.
+Macrophage-released ligands by ranking that statistic.
 
 ``` r
 ligand_activities %>% arrange(-pearson) 
@@ -260,12 +285,11 @@ head(best_upstream_ligands)
     ## [1] "Spp1"    "Anxa1"   "Tnfsf12" "Il15"    "Tfpi"    "Pf4"
 
 We see here that the performance metrics indicate that the 20 top-ranked
-ligands can predict the Fib signature genes reasonably, this implies
-that ranking of the ligands might be accurate as shown in our study.
-However, it is possible that for some gene sets, the target gene
-prediction performance of the top-ranked ligands would not be much
-better than random prediction. In that case, prioritization of ligands
-will be less trustworthy.
+ligands can predict the Fibroblast signature reasonably, this implies
+that ranking of the ligands might be accurate. However, it is possible
+that for some gene sets, the target gene prediction performance of the
+top-ranked ligands would not be much better than random prediction. In
+that case, prioritization of ligands will be less trustworthy.
 
 Additional note: we looked at the top 20 ligands here and will continue
 the analysis by inferring target genes of these 20 ligands. However, the
@@ -290,21 +314,21 @@ p_hist_lig_activity = ggplot(ligand_activities, aes(x=pearson)) +
 p_hist_lig_activity
 ```
 
-![](03_ligand_analysis_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-10-1.png)<!-- -->
 
 ## Step 5: Infer target genes of top-ranked ligands and visualize in a heatmap
 
-Now we will show how you can look at the regulatory potential scores
-between ligands and target genes of interest. In this case, we will look
-at links between top-ranked regulating ligands and genes. In the
-ligand-target heatmaps, we show here regulatory potential scores for
-interactions between the 20 top-ranked ligands and following target
-genes: genes that belong to the gene set of interest and to the 250 most
-strongly predicted targets of at least one of the 20 top-ranked ligands
-(the top 250 targets according to the general prior model, so not the
-top 250 targets for this dataset). Consequently, genes of your gene set
-that are not a top target gene of one of the prioritized ligands, will
-not be shown on the heatmap.
+Now we will loon into the regulatory potential scores between ligands
+and target genes of interest. In this case, we will look at links
+between top-ranked regulating ligands and genes. In the ligand-target
+heatmaps, we show here regulatory potential scores for interactions
+between the 20 top-ranked ligands and following target genes: genes that
+belong to the gene set of interest and to the 250 most strongly
+predicted targets of at least one of the 20 top-ranked ligands (the top
+250 targets according to the general prior model, so not the top 250
+targets for this dataset). Consequently, genes of your gene set that are
+not a top target gene of one of the prioritized ligands, will not be
+shown on the heatmap.
 
 ``` r
 active_ligand_target_links_df = best_upstream_ligands %>% 
@@ -409,27 +433,13 @@ theme(legend.key.width = unit(1.0, "cm"),
 p_ligand_target_network
 ```
 
-![](03_ligand_analysis_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
-
-Note that the choice of these cutoffs for visualization is quite
-arbitrary. We recommend users to test several cutoff values.
-
-If you would consider more than the top 250 targets based on prior
-information, you will infer more, but less confident, ligand-target
-links; by considering less than 250 targets, you will be more stringent.
-
-If you would change the quantile cutoff that is used to set scores to 0
-(for visualization purposes), lowering this cutoff will result in a more
-dense heatmap, whereas highering this cutoff will result in a more
-sparse
-heatmap.
+![](./04_ligand_output//figures/unnamed-chunk-13-1.png)<!-- -->
 
 ## Follow-up analysis 1: Ligand-receptor network inference for top-ranked ligands
 
 One type of follow-up analysis is looking at which receptors of the
-receiver cell population (here: malignant cells) can potentially bind to
-the prioritized ligands from the sender cell population (here:
-Macrophages).
+receiver cell population (here: fibroblasts) can potentially bind to the
+prioritized ligands from the sender cell population (here: Macrophages).
 
 So, we will now infer the predicted ligand-receptor interactions of the
 top-ranked ligands and visualize these in a heatmap.
@@ -472,18 +482,19 @@ p_ligand_receptor_network = vis_ligand_receptor_network %>% t() %>% make_heatmap
 p_ligand_receptor_network
 ```
 
-![](03_ligand_analysis_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-15-1.png)<!-- -->
 
 ## Follow-up analysis 2: Visualize expression of top-predicted ligands and their target genes in a combined heatmap
 
 NicheNet only considers expressed ligands of sender cells, but does not
-take into account their expression for ranking the ligands. The ranking
-is purely based on the potential that a ligand might regulate the gene
-set of interest, given prior knowledge. Because it is also useful to
-further look into expression of ligands and their target genes, we
-demonstrate here how you could make a combined figure showing ligand
-activity, ligand expression, target gene expression and ligand-target
-regulatory potential.
+take into account their expression for ranking the ligands. This is why
+we chose up-regulated ligands in the condition of under study (PHD2cKO).
+Then the ranking is based on the potential that a ligand might regulate
+the gene set of interest, given prior knowledge. Because it is also
+useful to further look into expression of ligands and their target
+genes. To conclude the analysis, we generate a combined figure showing
+ligand activity, ligand expression, target gene expression and
+ligand-target regulatory potential.
 
 #### Load additional packages required for the visualization:
 
@@ -513,30 +524,14 @@ p_ligand_pearson = vis_ligand_pearson %>%
 p_ligand_pearson
 ```
 
-![](03_ligand_analysis_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-18-1.png)<!-- -->
 
-#### Prepare expression of ligands in fibroblast per fib
-
-Because the single-cell data was collected from multiple fibs, we will
-show here the average expression of the ligands per
-fib.
+#### Prepare expression of ligands (sender: macrophages)
 
 ``` r
 expression_df_Mac = expression[order_ligands, grep("^MC_", v$targets$group)]
 colnames(expression_df_Mac) <- gsub("^.*_PHD2_KO","PHD2cKO",colnames(expression_df_Mac))
 colnames(expression_df_Mac) <- gsub("^.*_PHD2_WT","WT",colnames(expression_df_Mac))
-
-# expression_df_CAF = expression[order_ligands, grepl("^Mac_",v$targets$group,order_ligands)] %>% 
-#   data.frame() %>% rownames_to_column("cell") %>% tbl_df() %>% inner_join(sample_info %>% select(cell,fib), by =  "cell")
-# 
-# aggregated_expression_CAF = expression_df_CAF %>% group_by(fib) %>% select(-cell) %>% summarise_all(mean)
-# 
-# aggregated_expression_df_CAF = aggregated_expression_CAF %>% select(-fib) %>% t() %>% magrittr::set_colnames(aggregated_expression_CAF$fib) %>% data.frame() %>% rownames_to_column("ligand") %>% tbl_df() 
-# 
-# aggregated_expression_matrix_CAF = aggregated_expression_df_CAF %>% select(-ligand) %>% as.matrix() %>% magrittr::set_rownames(aggregated_expression_df_CAF$ligand)
-# 
-# order_fibs = c("HN6","HN20","HN26","HN28","HN22","HN25","HN5","HN18","HN17","HN16") # this order was determined based on the paper from Puram et al. Tumors are ordered according to Fib signature score.
-#vis_ligand_Mac_expression = aggregated_expression_matrix_CAF[order_ligands,order_fibs]
 
 vis_ligand_Mac_expression = expression_df_Mac
 ```
@@ -544,23 +539,6 @@ vis_ligand_Mac_expression = expression_df_Mac
 ``` r
 library(RColorBrewer)
 color = colorRampPalette(rev(brewer.pal(n = 7, name ="RdYlBu")))(100)
-p_ligand_Mac_expression = vis_ligand_Mac_expression %>% 
-            make_heatmap_ggplot("Prioritized Macrophage ligands","Marophages",
-            color = color[100],legend_position = "top", x_axis_position = "top", 
-    legend_title = "Expression\n(averaged over bulk cells)") + 
-theme(legend.key.width = unit(1.0, "cm"),
-    legend.text = element_text(family = fontTXT, size=10),
-    legend.title = element_text(family = fontTXT, size=14))
-
-p_ligand_Mac_expression
-```
-
-![](03_ligand_analysis_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
-
-Same info but scaled across samples
-
-``` r
-# Scaled expression
 vis_ligand_Mac_expression = expression_df_Mac %>% t() %>% scale_quantile() %>% t()
 
 p_ligand_Mac_scaled_expression = vis_ligand_Mac_expression  %>%
@@ -574,9 +552,9 @@ theme(legend.key.width = unit(1.0, "cm"),
 p_ligand_Mac_scaled_expression
 ```
 
-![](03_ligand_analysis_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-20-1.png)<!-- -->
 
-#### Prepare expression of target genes in malignant cells per fib
+#### Prepare expression of target genes (receiver: fibroblasts)
 
 ``` r
 expression_df_target = expression[order_targets, grep("^Fib_", v$target$group)]
@@ -599,7 +577,7 @@ theme(legend.key.width = unit(1.0, "cm"),
 p_target_fib_scaled_expression
 ```
 
-![](03_ligand_analysis_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-22-1.png)<!-- -->
 
 #### Combine the different heatmaps in one overview figure
 
@@ -654,7 +632,7 @@ plot_grid(figures_without_legend,
           rel_heights = c(10,2), nrow = 2, align = "hv")
 ```
 
-![](./output/03_ligands/combined_heatmaps_ligand-1.png)<!-- -->
+![](./04_ligand_output//figures/combined_heatmaps_ligand-1.png)<!-- -->
 
 ## Extract interactome for downstream analysis
 
@@ -668,7 +646,7 @@ fibrosis.
 ``` r
 Spp1_target_links <- get_weighted_ligand_target_links("Spp1", geneset_oi, ligand_target_matrix, n = 250)
 
-write.table(Spp1_target_links, file=paste0(OUTDIR,"/Spp1_target_links.tsv"),
+write.table(Spp1_target_links, file=paste0(DATADIR,"/Spp1_target_links.tsv"),
         sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
 ```
 
@@ -859,18 +837,18 @@ Let’s export for visualization
 #   1st export it to DOT format for the records.
 #   2nd export it to PS
 #   3rd then from PS, export it into PNG and TIFF with density 300
-cat(generate_dot(graph_min_max), file=paste0(OUTDIR,"graph.dot"))
+cat(generate_dot(graph_min_max), file=paste0(FIGDIR,"graph.dot"))
 export_graph(graph_min_max, 
-         file_name=paste0(OUTDIR,"/graph.ps"),
+         file_name=paste0(FIGDIR,"/graph.ps"),
          file_type="ps")
 system(paste("convert", 
          "-density 300",
-         paste0(OUTDIR,"/graph.ps"),
-         paste0(OUTDIR,"/graph.tiff")))
+         paste0(FIGDIR,"/graph.ps"),
+         paste0(FIGDIR,"/graph.tiff")))
 system(paste("convert", 
          "-density 300",
-         paste0(OUTDIR,"/graph.ps"),
-         paste0(OUTDIR,"/graph.png")))
+         paste0(FIGDIR,"/graph.ps"),
+         paste0(FIGDIR,"/graph.png")))
 
 # Herein a convoluted 2nd strategy to export as png,pdf etc
 # This one has more dependencies
@@ -883,7 +861,7 @@ system(paste("convert",
 #  export_svg %>% charToRaw %>% rsvg_png("/tmp/g.pdf")
 ```
 
-![graph](./output/03_ligands/graph.png)
+![graph](./03_ligand_output/figures/graph.png)
 
 ``` r
 data_source_network = infer_supporting_datasources(signaling_graph_list = active_signaling_network,
@@ -903,10 +881,10 @@ head(data_source_network)
     ## 5 Cebpb Ccl3  regnetwork_encode        regnetwork     regulatory
     ## 6 Cebpb Ccl3  ontogenet_coarse         ontogenet      regulatory
 
-Export to Cytoscape
+Export to Cytoscape (if needed, rerun uncomments in chunk).
 
 ``` r
-#output_path = paste0(OUTDIR,"/Spp1_") 
+#output_path = paste0(DATADIR,"/Spp1_") 
 #write_output = FALSE # change to TRUE for writing output
 #
 ## weighted networks ('import network' in Cytoscape)
@@ -965,12 +943,13 @@ sessionInfo()
     ## [10] limma_3.40.6       forcats_0.4.0      stringr_1.4.0     
     ## [13] dplyr_0.8.3        purrr_0.3.2        readr_1.3.1       
     ## [16] tidyr_1.0.0        tibble_2.1.3       ggplot2_3.2.1     
-    ## [19] tidyverse_1.2.1    nichenetr_0.1.0   
+    ## [19] tidyverse_1.2.1    nichenetr_0.1.0    rmarkdown_1.15    
+    ## [22] nvimcom_0.9-82    
     ## 
     ## loaded via a namespace (and not attached):
     ##   [1] colorspace_1.4-1     ggsignif_0.6.0       ellipsis_0.3.0      
     ##   [4] class_7.3-15         htmlTable_1.13.1     base64enc_0.1-3     
-    ##   [7] rstudioapi_0.10      prodlim_2019.11.13   fansi_0.4.0         
+    ##   [7] rstudioapi_0.10      fansi_0.4.0          prodlim_2019.11.13  
     ##  [10] lubridate_1.7.4      xml2_1.2.2           codetools_0.2-16    
     ##  [13] splines_3.6.1        knitr_1.24           zeallot_0.1.0       
     ##  [16] Formula_1.2-3        jsonlite_1.6         pROC_1.16.1         
@@ -1000,9 +979,9 @@ sessionInfo()
     ##  [88] foreign_0.8-72       withr_2.1.2          survival_2.44-1.1   
     ##  [91] nnet_7.3-12          modelr_0.1.5         crayon_1.3.4        
     ##  [94] utf8_1.1.4           fdrtool_1.2.15       KernSmooth_2.23-16  
-    ##  [97] rmarkdown_1.15       grid_3.6.1           readxl_1.3.1        
-    ## [100] data.table_1.12.8    ModelMetrics_1.2.2.1 digest_0.6.21       
-    ## [103] stats4_3.6.1         munsell_0.5.0
+    ##  [97] grid_3.6.1           readxl_1.3.1         data.table_1.12.8   
+    ## [100] ModelMetrics_1.2.2.1 digest_0.6.21        stats4_3.6.1        
+    ## [103] munsell_0.5.0
 
 ``` r
 {                                                                                                                                                                                                           

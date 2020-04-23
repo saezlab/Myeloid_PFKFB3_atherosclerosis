@@ -1,23 +1,34 @@
 ---
 title: "Differential expression analysis in Mieloid PHD2 deficiency in atherogenesis"
-author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
 output: github_document
 ---
 
+## Set-up environment
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Set-up environment
-
-```{r}
+Define random seed for reproduciblity, and output folder.
+```{r env}
+# Seed number
 set.seed(1234)
-outdir <- "./output/01_bulk_dge/"
-if(!dir.exists(outdir)) dir.create(outdir, recursive = TRUE)
+# Output directory
+OUTDIR <- "./01_DGE_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
 ```
 
-## Load libraries
 
+## Load libraries
+Essential R libraries for the analysis.
 ```{r}
 library(limma)
 library(edgeR)
@@ -34,7 +45,11 @@ library(gridExtra)
 
 ## Load data
 The raw sequencing data has been processed to quantify gene expression using kallisto.
+Read material and methods section of the manuscript for a detailed description.
+Processed data is available under the accession number in the main [README](../README.md") file 
+at a public repository.
 
+We load read counts and metadata for the samples.
 ```{r cars}
 cnt <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-rawdata.txt", sep="\t", header = TRUE, check.names = FALSE)
 rownames(cnt) <- cnt[,1]
@@ -44,7 +59,7 @@ targets <- read.table("../data/bulk/MST_MC_N_fibroblasts_PHD2-metadata.txt", sep
 targets$Sample <- gsub(" ","_",targets$Sample)
 ```
 
-Prepare the gene expression matrices for the analysis. Rename samples
+Prepare the gene expression matrices for the analysis. Rename samples.
 ```{r }
 # Rename samples
 # Check data and metadata are in the same order
@@ -76,14 +91,15 @@ gr <- gsub("^MΦ_","MC_",gr)
 
 
 ## Test for differential gene expression
-Create DGElist for limma-voom.
+Create DGElist for limma-voom tranformation, and Empirical Bayes method for differential 
+gene expession.
 ```{r}
 y <- DGEList(counts = cnt, group = gr, genes = rownames(cnt))
 design <- model.matrix(~ 0 + gr)
 colnames(design) <- gsub("^gr","",colnames(design))
 ```
 
-Filter out genes that are not expressed in the experiment.
+Filter out genes that are not expressed in the experiments.
 ```{r}
 keep <- filterByExpr(y, design)
 # How many genes are retrieved after filtering?
@@ -119,7 +135,8 @@ DGE_cnt <- apply(decideTests(eBay),2, table)
 print(DGE_cnt)
 ```
 
-```{r pie_dge, fig.width=7, fig.height=5, dpi=300, fig.path="./output/01_bulk_dge/", dev=c('png','tiff')}
+We could visualize the proportion of differentially expressed genes.
+```{r pie_dge, fig.width=7, fig.height=5, dpi=300, warning=FALSE}
 NGenes <- colSums(DGE_cnt)
 
 # First dataframe with in/out
@@ -197,15 +214,15 @@ grid.arrange(pie1, pie2, nrow=1)
 
 
 
-## Write tables of differentially expressed genes
-
+## Diagnostics and save differentially expressed genes
+Write tables as supplementary data for the records and further interpretation.
 ```{r}
 for(cont in colnames(cont.mat)) {
   cat(paste0("Registering differential expression for ",cont,"\n"),
 	file=stdout())
   topTab <- topTable(eBay, coef=cont, number = Inf)
   # DEGs table
-  write.table(topTab, file=paste0(outdir,cont,"_diffexpr.tsv"),sep="\t",
+  write.table(topTab, file=paste0(DATADIR,cont,"_diffexpr.tsv"),sep="\t",
                                   row.names=FALSE, col.names=TRUE, quote=FALSE)
   # Volcano plot
   plot(eBay$coefficients[,cont], -log10(eBay$p.value[,cont]),
@@ -216,13 +233,14 @@ for(cont in colnames(cont.mat)) {
 ```
 
 ## Visualization of differentially expressed genes
-We are interested in a series of genes for each contrast based on the experimental evidence (qPCR and Western blots).
+We are interested in a series of genes for each contrast based on the experimental 
+evidence (qPCR and Western blots) carried out in the laboratory.
 
 ### Macrophages
-In the case of the Macrophages upon PHD2-KO, we are interested in a series of genes and proteins related on how these cells
-response to hypoxia and induce apoptosis.
+In the case of the Macrophages upon PHD2-KO, we are interested in a series of genes and 
+proteins related on how these cells responding to hypoxia and self-induced apoptosis.
 
-```{r volcano_Macrophages_PHD2cKO, dpi=300, fig.width=8, fig.height=6, fig.path='./output/01_bulk_dge/', dev = c('png','tiff')}
+```{r volcano_Macrophages_PHD2cKO, dpi=300, fig.width=8, fig.height=6, warning=FALSE}
 Mac_interesting_genes <- getGmt("../data/Prior/MC_PHD2_diff.gmt")
 Mac_interesting_genes <- unlist(geneIds(Mac_interesting_genes))
 if(any(!Mac_interesting_genes %in% rownames(v$E))) {
@@ -259,11 +277,12 @@ p
 ```
 
 ### Fibroblasts
-In the case of the fibroblasts, the coculture with PHD2-cKO Macrophage supernadant enhances collagen production.
-Thus we are going to visualize how these regulates collagen genes upon perturbation.
+In the case of the fibroblasts, the coculture with medium conditioned with PHD2-cKO Macrophage
+supernadant enhances collagen production. Thus we are going to visualize how these 
+regulates collagen genes upon perturbation.
 
-First, we obtain which collagen genes are enriched in the stimulated fibroblasts using pre-ranked GSEA. 
-At the same time, we test for other genes related to extracellular matrix.
+First, we obtain which collagen genes are enriched in the stimulated fibroblasts using leading edge analysis from 
+pre-ranked GSEA. At the same time, we test for other genes related to extracellular matrix.
 ```{r fgsea_test}
 #	# Alternative option is to use the gene set collection from MSigDB, but we found that
 #	# the matrisome DB is more complete in terms of orthologs from mouse.
@@ -283,11 +302,11 @@ ECM.res <- fgsea(pathways=ECM, stats=rnk, nperm=1000)
 # Save it
 ECM.tab <- ECM.res
 ECM.tab$leadingEdge <- unlist(lapply(ECM.tab$leadingEdge, function(z) paste(z, collapse=",")))
-write.table(ECM.tab, sep="\t", file = paste0(outdir, "/Fib_PHD2_prerankedGSEA_matrisome.tsv"), 
+write.table(ECM.tab, sep="\t", file = paste0(DATADIR, "/Fib_PHD2_prerankedGSEA_matrisome.tsv"), 
 	    col.names=TRUE, row.names=FALSE, quote=FALSE)
 ```
 Let's visualize the results in a single plot
-```{r fgsea_ECM_vis, dpi=300, fig.width=8, fig.height=6, fig.path='./output/01_bulk_dge/', dev = c('png','tiff')}
+```{r fgsea_ECM_vis, dpi=300, fig.width=8, fig.height=6}
 # plotEnrichment(ECM[["Collagens"]], rnk) + labs(title="Fibroblasts PHD2")
 plotGseaTable(ECM, rnk, ECM.res)  + 
 	theme(text=element_text(family=fontTXT, color="black", size=18),
@@ -295,7 +314,7 @@ plotGseaTable(ECM, rnk, ECM.res)  +
 	      )
 ```
 
-```{r volcano_Fibroblasts_PHD2coCult, dpi=300, fig.width=8, fig.height=6, fig.path='./output/01_bulk_dge/', dev = c('png','tiff')}
+```{r volcano_Fibroblasts_PHD2coCult, dpi=300, fig.width=8, fig.height=6, warning=FALSE}
 
 topTab <- topTable(eBay, coef="Fib_PHD2", number = Inf)
 topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"FDR<0.05","n.s.")
@@ -328,9 +347,9 @@ p
 We are going to save the eBayes object for downstream analysis.
 ```{r}
 # The Elist object, with voom-transformed gene expression
-saveRDS(v, paste0(outdir,"/v.rds"))
+saveRDS(v, paste0(DATADIR,"/v.rds"))
 # The eBayes object from the two contrasts
-saveRDS(eBay, paste0(outdir,"/eBay.rds"))
+saveRDS(eBay, paste0(DATADIR,"/eBay.rds"))
 ```
 
 
@@ -340,7 +359,7 @@ saveRDS(eBay, paste0(outdir,"/eBay.rds"))
 sessionInfo()
 
 {                                                                                                                                                                                                           
-sink(file=paste0(outdir,"/sessionInfo.txt"))
+sink(file=paste0(OUTDIR,"/sessionInfo.txt"))
 print(sessionInfo())
 sink()
 }

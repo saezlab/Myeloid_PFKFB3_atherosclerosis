@@ -1,12 +1,12 @@
 Immune	> Consensus plaque	Ptprc
-Mac-DC-Neutro	> Consensus plaque	Lyz2	Cd68	C1qa	C1qb	C1qc
-EC	> Consensus plaque	Pecam1	Cdh5
-SMC/SMC-like	> Consensus plaque	Myh11
-Fib/MC	> Consensus plaque	Col1a1	Col1a2	Pdgfra	Dcn	Mmp2
-Epithelial-like	> Consensus plaque	Krt19	Lgals7	Cd82	Upk3b	Fxyd3	Msln	Krt19	Upk1b	Krt7	Krt8	Wfdc2	Wt1	Chst4
 B-cell	> Consensus plaque	Cd79a	Cd19
-T-cell	> Consensus adventia	Cd3d
-
-
-
-
+T-cell	> Consensus Plaque	Cd3d
+Macrophages	> Consensus Plaque	Lyz2	Cd68	C1qa	C1qb	C1qc	Nlrp3	Tlr2	Cxcl1	Il1b	Zfp36	Egr1
+Neutrophils	> Consensus Plaque	S100a8	S100a9	Retnlg	Ngp	Lcn2	Prdx5	Hdc	Mmp9
+SMC	> Consensus plaque	Myh11	Tagln	Cnn1
+Fibroblasts	> Consensus plaque	Col1a1	Col1a2	Col14a1	Pdgfra	Smoc2	Mmp2	Clec3b	Dpt	Dpep1	Fbln1
+EC	> Consensus plaque	Pecam1	Cdh5
+moDC	> Consensus plaque	Cd209a	Cd14	Cebpa	Lyz2	Cd68
+DC	> Consensus plaque	Flt3	Gm2a	Plbd1
+Inflammatory_M1-Macrophages	> Consensus plaque	Ms4a6c	Gngt2	Adgre1	C1qa
+Resident_M2-Macrophages	> Consensus plaque	Folr2	Mrc1	Cbr2	Pf4	Selenop	Lyve1

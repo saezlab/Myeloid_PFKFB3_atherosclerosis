@@ -1,8 +1,32 @@
-Investigation of the role of PHD2 in-vivo atherogenesis in Macrophages
+Investigation of the role of PHD2 atherogenesis in in-vivo Macrophages
 ================
-Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de>
+Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de> -
+ORCID: 0000-0003-0780-6683
 
-## Load libraries
+## Setup
+
+We define a random seed number for reproducibility, file structure for
+the output, and load essential libraries
+
+### Environment
+
+``` r
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./03_macrophage_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
+```
+
+### Load libraries
 
 ``` r
 suppressPackageStartupMessages(require(Seurat))
@@ -17,29 +41,7 @@ suppressPackageStartupMessages(require(viper))
 suppressPackageStartupMessages(require(purrr))
 suppressPackageStartupMessages(require(dplyr))
 source("../src/graphics.R")
-```
-
-    ## Loading required package: extrafont
-
-    ## Registering fonts with R
-
-``` r
 source("../src/seurat_fx.R")
-```
-
-### Setting-up environment
-
-The environment will be set with a random seed number for
-reproducibility and an output folder for processed data and figures.
-
-``` r
-# Seed number
-set.seed(1234)
-# Output directory
-OUTDIR <- "./output/03_macrophages"
-if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
-# Input data
-sobj <- "./output/02_assignment/S.rds"
 ```
 
 ## Load data
@@ -47,6 +49,9 @@ sobj <- "./output/02_assignment/S.rds"
 Read the Seurat Object from second step.
 
 ``` r
+# Input data
+sobj <- "./02_identity_output/data/S.rds"
+# Read 
 if(file.exists(sobj)) {
     S <- readRDS(sobj)
 } else {
@@ -71,9 +76,6 @@ average population of the mouse replicate.
 ### Differential gene expression
 
 ``` r
-MARKERS.OUTDIR <- paste0(OUTDIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt")
-if(!dir.exists(MARKERS.OUTDIR)) dir.create(MARKERS.OUTDIR);
-
 S1 <- S[, S@active.ident=="Macrophage"]
 
 Idents(S1) <- "stim"
@@ -93,7 +95,7 @@ ggplot(avg, aes(WT, PHD2cKO)) + geom_point(alpha=0.6) + ggtitle(label = "Macroph
             axis.title.y = element_text(size=18))
 ```
 
-![](./output/03_macrophages/scatterplot_macrophages_PHD2cKO_vs_PHD2wt-1.png)<!-- -->
+![](./03_macrophage_output//figures/scatterplot_macrophages_PHD2cKO_vs_PHD2wt-1.png)<!-- -->
 
 ``` r
 dge <- FindMarkers(object = S1, ident.1 = "PHD2cKO", ident.2 = "WT", 
@@ -106,7 +108,7 @@ dge$gene <- rownames(dge)
 dge <- dge[,c("cluster", "gene", cols_names)]
    
 write.table(dge,
-            file = paste0(MARKERS.OUTDIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt_DEGs.tsv"),
+            file = paste0(DATADIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt_DEGs.tsv"),
             sep="\t",col.names = TRUE, row.names = FALSE, quote=FALSE
 )
 ```
@@ -208,8 +210,6 @@ over-representation of cells responding to hypoxia.
 
 ### Dorothea focused on Hif1a
 
-Text
-
 ``` r
 # load regulons
 df2regulon <- function(df, regulator_name="tf") {
@@ -226,338 +226,10 @@ regul <- df2regulon(df=regulon.df)
 
 # Calculate TF activities
 TF <- viper(eset = as.matrix(S@assays$RNA@data), regulon = regul,
-              nes = T, method = "none", minsize = 4,
-              eset.filter = F, adaptive.size = F)
-```
-
-    ## 
-    ## Computing the association scores
-
-    ## Computing regulons enrichment with aREA
-
-    ## 
-      |                                                                       
-      |                                                                 |   0%
-      |                                                                       
-      |                                                                 |   1%
-      |                                                                       
-      |=                                                                |   1%
-      |                                                                       
-      |=                                                                |   2%
-      |                                                                       
-      |==                                                               |   2%
-      |                                                                       
-      |==                                                               |   3%
-      |                                                                       
-      |==                                                               |   4%
-      |                                                                       
-      |===                                                              |   4%
-      |                                                                       
-      |===                                                              |   5%
-      |                                                                       
-      |====                                                             |   5%
-      |                                                                       
-      |====                                                             |   6%
-      |                                                                       
-      |====                                                             |   7%
-      |                                                                       
-      |=====                                                            |   7%
-      |                                                                       
-      |=====                                                            |   8%
-      |                                                                       
-      |======                                                           |   8%
-      |                                                                       
-      |======                                                           |   9%
-      |                                                                       
-      |======                                                           |  10%
-      |                                                                       
-      |=======                                                          |  10%
-      |                                                                       
-      |=======                                                          |  11%
-      |                                                                       
-      |========                                                         |  12%
-      |                                                                       
-      |========                                                         |  13%
-      |                                                                       
-      |=========                                                        |  13%
-      |                                                                       
-      |=========                                                        |  14%
-      |                                                                       
-      |=========                                                        |  15%
-      |                                                                       
-      |==========                                                       |  15%
-      |                                                                       
-      |==========                                                       |  16%
-      |                                                                       
-      |===========                                                      |  16%
-      |                                                                       
-      |===========                                                      |  17%
-      |                                                                       
-      |===========                                                      |  18%
-      |                                                                       
-      |============                                                     |  18%
-      |                                                                       
-      |============                                                     |  19%
-      |                                                                       
-      |=============                                                    |  19%
-      |                                                                       
-      |=============                                                    |  20%
-      |                                                                       
-      |=============                                                    |  21%
-      |                                                                       
-      |==============                                                   |  21%
-      |                                                                       
-      |==============                                                   |  22%
-      |                                                                       
-      |===============                                                  |  22%
-      |                                                                       
-      |===============                                                  |  23%
-      |                                                                       
-      |===============                                                  |  24%
-      |                                                                       
-      |================                                                 |  24%
-      |                                                                       
-      |================                                                 |  25%
-      |                                                                       
-      |=================                                                |  25%
-      |                                                                       
-      |=================                                                |  26%
-      |                                                                       
-      |=================                                                |  27%
-      |                                                                       
-      |==================                                               |  27%
-      |                                                                       
-      |==================                                               |  28%
-      |                                                                       
-      |===================                                              |  28%
-      |                                                                       
-      |===================                                              |  29%
-      |                                                                       
-      |===================                                              |  30%
-      |                                                                       
-      |====================                                             |  30%
-      |                                                                       
-      |====================                                             |  31%
-      |                                                                       
-      |=====================                                            |  32%
-      |                                                                       
-      |=====================                                            |  33%
-      |                                                                       
-      |======================                                           |  33%
-      |                                                                       
-      |======================                                           |  34%
-      |                                                                       
-      |======================                                           |  35%
-      |                                                                       
-      |=======================                                          |  35%
-      |                                                                       
-      |=======================                                          |  36%
-      |                                                                       
-      |========================                                         |  36%
-      |                                                                       
-      |========================                                         |  37%
-      |                                                                       
-      |========================                                         |  38%
-      |                                                                       
-      |=========================                                        |  38%
-      |                                                                       
-      |=========================                                        |  39%
-      |                                                                       
-      |==========================                                       |  39%
-      |                                                                       
-      |==========================                                       |  40%
-      |                                                                       
-      |==========================                                       |  41%
-      |                                                                       
-      |===========================                                      |  41%
-      |                                                                       
-      |===========================                                      |  42%
-      |                                                                       
-      |============================                                     |  42%
-      |                                                                       
-      |============================                                     |  43%
-      |                                                                       
-      |============================                                     |  44%
-      |                                                                       
-      |=============================                                    |  44%
-      |                                                                       
-      |=============================                                    |  45%
-      |                                                                       
-      |==============================                                   |  45%
-      |                                                                       
-      |==============================                                   |  46%
-      |                                                                       
-      |==============================                                   |  47%
-      |                                                                       
-      |===============================                                  |  47%
-      |                                                                       
-      |===============================                                  |  48%
-      |                                                                       
-      |================================                                 |  49%
-      |                                                                       
-      |================================                                 |  50%
-      |                                                                       
-      |=================================                                |  50%
-      |                                                                       
-      |=================================                                |  51%
-      |                                                                       
-      |==================================                               |  52%
-      |                                                                       
-      |==================================                               |  53%
-      |                                                                       
-      |===================================                              |  53%
-      |                                                                       
-      |===================================                              |  54%
-      |                                                                       
-      |===================================                              |  55%
-      |                                                                       
-      |====================================                             |  55%
-      |                                                                       
-      |====================================                             |  56%
-      |                                                                       
-      |=====================================                            |  56%
-      |                                                                       
-      |=====================================                            |  57%
-      |                                                                       
-      |=====================================                            |  58%
-      |                                                                       
-      |======================================                           |  58%
-      |                                                                       
-      |======================================                           |  59%
-      |                                                                       
-      |=======================================                          |  59%
-      |                                                                       
-      |=======================================                          |  60%
-      |                                                                       
-      |=======================================                          |  61%
-      |                                                                       
-      |========================================                         |  61%
-      |                                                                       
-      |========================================                         |  62%
-      |                                                                       
-      |=========================================                        |  62%
-      |                                                                       
-      |=========================================                        |  63%
-      |                                                                       
-      |=========================================                        |  64%
-      |                                                                       
-      |==========================================                       |  64%
-      |                                                                       
-      |==========================================                       |  65%
-      |                                                                       
-      |===========================================                      |  65%
-      |                                                                       
-      |===========================================                      |  66%
-      |                                                                       
-      |===========================================                      |  67%
-      |                                                                       
-      |============================================                     |  67%
-      |                                                                       
-      |============================================                     |  68%
-      |                                                                       
-      |=============================================                    |  69%
-      |                                                                       
-      |=============================================                    |  70%
-      |                                                                       
-      |==============================================                   |  70%
-      |                                                                       
-      |==============================================                   |  71%
-      |                                                                       
-      |==============================================                   |  72%
-      |                                                                       
-      |===============================================                  |  72%
-      |                                                                       
-      |===============================================                  |  73%
-      |                                                                       
-      |================================================                 |  73%
-      |                                                                       
-      |================================================                 |  74%
-      |                                                                       
-      |================================================                 |  75%
-      |                                                                       
-      |=================================================                |  75%
-      |                                                                       
-      |=================================================                |  76%
-      |                                                                       
-      |==================================================               |  76%
-      |                                                                       
-      |==================================================               |  77%
-      |                                                                       
-      |==================================================               |  78%
-      |                                                                       
-      |===================================================              |  78%
-      |                                                                       
-      |===================================================              |  79%
-      |                                                                       
-      |====================================================             |  79%
-      |                                                                       
-      |====================================================             |  80%
-      |                                                                       
-      |====================================================             |  81%
-      |                                                                       
-      |=====================================================            |  81%
-      |                                                                       
-      |=====================================================            |  82%
-      |                                                                       
-      |======================================================           |  82%
-      |                                                                       
-      |======================================================           |  83%
-      |                                                                       
-      |======================================================           |  84%
-      |                                                                       
-      |=======================================================          |  84%
-      |                                                                       
-      |=======================================================          |  85%
-      |                                                                       
-      |========================================================         |  85%
-      |                                                                       
-      |========================================================         |  86%
-      |                                                                       
-      |========================================================         |  87%
-      |                                                                       
-      |=========================================================        |  87%
-      |                                                                       
-      |=========================================================        |  88%
-      |                                                                       
-      |==========================================================       |  89%
-      |                                                                       
-      |==========================================================       |  90%
-      |                                                                       
-      |===========================================================      |  90%
-      |                                                                       
-      |===========================================================      |  91%
-      |                                                                       
-      |===========================================================      |  92%
-      |                                                                       
-      |============================================================     |  92%
-      |                                                                       
-      |============================================================     |  93%
-      |                                                                       
-      |=============================================================    |  93%
-      |                                                                       
-      |=============================================================    |  94%
-      |                                                                       
-      |=============================================================    |  95%
-      |                                                                       
-      |==============================================================   |  95%
-      |                                                                       
-      |==============================================================   |  96%
-      |                                                                       
-      |===============================================================  |  96%
-      |                                                                       
-      |===============================================================  |  97%
-      |                                                                       
-      |===============================================================  |  98%
-      |                                                                       
-      |================================================================ |  98%
-      |                                                                       
-      |================================================================ |  99%
-      |                                                                       
-      |=================================================================|  99%
-      |                                                                       
-      |=================================================================| 100%
-
-``` r
+              nes = T, minsize = 4,
+              eset.filter = F, adaptive.size = F,
+          verbose=FALSE)
+  
 # Add them as metadata
 stopifnot(colnames(S) == colnames(TF))
 S$Hif1a_activity <- TF["Hif1a",]
@@ -572,35 +244,9 @@ VlnPlot.stim(S[,Idents(S)=="Macrophage"],
 
     ## Joining, by = "stim"
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-
-![](./output/03_macrophages/vln_macrophages_dorothea_hif1a-1.png)<!-- -->
+![](./03_macrophage_output//figures/vln_macrophages_dorothea_hif1a-1.png)<!-- -->
 
 ### PROGENy focused on hypoxia response
-
-Text
 
 ``` r
 ### Progeny ####
@@ -630,103 +276,7 @@ VlnPlot.stim(S[,Idents(S)=="Macrophage"],
 
     ## Joining, by = "stim"
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x2d
-
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-
-![](./output/03_macrophages/vln_progeny_hypoxia_macrophages-1.png)<!-- -->
+![](./03_macrophage_output//figures/vln_progeny_hypoxia_macrophages-1.png)<!-- -->
 
 ### Enrichment of in-vitro PHD2-KO signature
 
@@ -763,7 +313,7 @@ cells_rankings <- AUCell_buildRankings(as.matrix(S@assays$RNA@data))
     ## Quantiles for the number of genes detected by cell: 
     ## (Non-detected genes are shuffled at the end of the ranking. Keep it in mind when choosing the threshold for calculating the AUC).
 
-![](./output/03_macrophages/vln_aucell_phd2ko_macrophages-1.png)<!-- -->
+![](./03_macrophage_output//figures/vln_aucell_phd2ko_macrophages-1.png)<!-- -->
 
     ##     min      1%      5%     10%     50%    100% 
     ##  503.00  553.76  716.00  891.00 2026.00 3984.00
@@ -788,103 +338,7 @@ VlnPlot.stim(S[,Idents(S)=="Macrophage"],
 
     ## Joining, by = "stim"
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-
-![](./output/03_macrophages/vln_aucell_phd2ko_macrophages-2.png)<!-- -->
+![](./03_macrophage_output//figures/vln_aucell_phd2ko_macrophages-2.png)<!-- -->
 
 ### Pair-wise comparison of these markers of hypoxia response
 
@@ -912,34 +366,7 @@ pairs(S@meta.data[Idents(S)=="Macrophage",
       bg=cond.cols[S@meta.data[Idents(S)=="Macrophage", "stim"]])
 ```
 
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-    
-    ## Warning in axis(side = side, at = at, labels = labels, ...): font width
-    ## unknown for character 0x2d
-
-![](./output/03_macrophages/pairs_hypoxia_macrophages-1.png)<!-- -->
+![](./03_macrophage_output//figures/pairs_hypoxia_macrophages-1.png)<!-- -->
 
 We could conclude that PHD2-cKO condition presents a skewed distribution
 of cells towards hypoxia response as compared to PHD2-wt
@@ -957,7 +384,14 @@ S$PHD2cKO_class[Idents(S)=="Macrophage"] <- ifelse(S$PHD2cKO[Idents(S)=="Macroph
                            "High", "Low")
 
 S$PHD2cKO_class2 <- paste0(S$stim,"_",S$PHD2cKO_class)
+
+print(cutoff)
 ```
+
+    ##        75% 
+    ## 0.09726568
+
+The cutoff of Q3 in PHD2cKO is 0.0972657.
 
 ``` r
 # Visualization focused on Macrophages population
@@ -968,103 +402,7 @@ VlnPlot.stim(S[,Idents(S)=="Macrophage"],
 
     ## Joining, by = "stim"
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-
-![](./output/03_macrophages/vln_aucell_phd2ko_macrophages_wCutoff-1.png)<!-- -->
+![](./03_macrophage_output//figures/vln_aucell_phd2ko_macrophages_wCutoff-1.png)<!-- -->
 
 ``` r
 S1 <- S[, Idents(S)=="Macrophage"] 
@@ -1115,225 +453,252 @@ p+geom_label_repel(data=dge[dge$show,],
       )
 ```
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+![](./03_macrophage_output//figures/volcano_PHD2cKOsign_high_vs_low-1.png)<!-- -->
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+## Zoom-in Macrophages
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+``` r
+M.list <- SplitObject(S[, Idents(S)=="Macrophage"],
+              split.by="orig.ident")
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+for(i in names(M.list)){
+    M.list[[i]] <- NormalizeData(M.list[[i]], verbose=FALSE)
+    M.list[[i]] <- ScaleData(M.list[[i]], verbose=FALSE)
+    M.list[[i]] <- FindVariableFeatures(M.list[[i]], 
+                       selection.method = "vst",
+                       nfeatures = 2000, verbose = FALSE)
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+}
+M.anchors <- FindIntegrationAnchors(object.list = M.list, dims = 1:30)
+```
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+    ## Computing 2000 integration features
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+    ## Scaling features for provided objects
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+    ## Finding all pairwise anchors
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+    ## Running CCA
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+    ## Merging objects
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+    ## Finding neighborhoods
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+    ## Finding anchors
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+    ##  Found 1369 anchors
 
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x2d
+    ## Filtering anchors
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+    ##  Retained 1278 anchors
 
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
+    ## Extracting within-dataset neighbors
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+``` r
+M.i <- IntegrateData(anchorset = M.anchors, dims = 1:30)
+```
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+    ## Merging dataset 2 into 1
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+    ## Extracting anchors for merged samples
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x20
+    ## Finding integration vectors
 
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x2d
+    ## Finding integration vector weights
 
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
-    
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x20
+    ## Integrating data
 
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
-    
-    ## Warning in grid.Call(C_textBounds, as.graphicsAnnot(x$label), x$x, x$y, :
-    ## font width unknown for character 0x2d
+``` r
+# Clean metadata
+M.i@meta.data <- M.i@meta.data[, grep("snn_res", colnames(M.i@meta.data), invert=TRUE)]
 
-    ## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x,
-    ## x$y, : font width unknown for character 0x2d
+if(all(dim(M.i@assays$RNA@scale.data) == c(0,0))) {
+M.i@assays$RNA@scale.data <- cbind(M.list[[1]]@assays$RNA@scale.data,
+                   M.list[[2]]@assays$RNA@scale.data)[,colnames(M.i)] 
+}
 
-![](./output/03_macrophages/volcano_PHD2cKOsign_high_vs_low-1.png)<!-- -->
+DefaultAssay(M.i) <- "integrated"
+
+# Run the standard workflow for visualization and clustering
+M.i <- ScaleData(M.i, verbose = FALSE)
+M.i <- RunPCA(M.i, npcs = 30, verbose = FALSE)
+# ElbowPlot(M.i)
+M.i <- RunUMAP(M.i, reduction = "pca", dims = 1:15)
+```
+
+    ## 23:08:23 UMAP embedding parameters a = 0.9922 b = 1.112
+
+    ## 23:08:23 Read 799 rows and found 15 numeric columns
+
+    ## 23:08:23 Using Annoy for neighbor search, n_neighbors = 30
+
+    ## 23:08:23 Building Annoy index with metric = cosine, n_trees = 50
+
+    ## 0%   10   20   30   40   50   60   70   80   90   100%
+
+    ## [----|----|----|----|----|----|----|----|----|----|
+
+    ## **************************************************|
+    ## 23:08:24 Writing NN index file to temp file /tmp/Rtmpa0Pb1Z/file62d216b1d244
+    ## 23:08:24 Searching Annoy index using 1 thread, search_k = 3000
+    ## 23:08:24 Annoy recall = 100%
+    ## 23:08:25 Commencing smooth kNN distance calibration using 1 thread
+    ## 23:08:26 Initializing from normalized Laplacian + noise
+    ## 23:08:26 Commencing optimization for 500 epochs, with 30574 positive edges
+    ## 23:08:28 Optimization finished
+
+``` r
+DimPlot(M.i, reduction="umap", group.by="orig.ident", cols=c("red","grey"))
+```
+
+![](./03_macrophage_output//figures/umap_macrophages_condition-1.png)<!-- -->
+
+Second round of unsupervised clustering to find even major differences
+in this cell population (macrophages).
+
+``` r
+set.seed(1234)
+# Find clusters
+M.i <- FindNeighbors(M.i, dims = 1:15)
+```
+
+    ## Computing nearest neighbor graph
+
+    ## Computing SNN
+
+``` r
+M.i <- FindClusters(M.i, resolution = 0.1)
+```
+
+    ## Modularity Optimizer version 1.3.0 by Ludo Waltman and Nees Jan van Eck
+    ## 
+    ## Number of nodes: 799
+    ## Number of edges: 26680
+    ## 
+    ## Running Louvain algorithm...
+    ## Maximum modularity in 10 random starts: 0.9209
+    ## Number of communities: 3
+    ## Elapsed time: 0 seconds
+
+``` r
+table(Idents(M.i))
+```
+
+    ## 
+    ##   0   1   2 
+    ## 474 261  64
+
+``` r
+DimPlot(M.i, reduction="umap")
+```
+
+![](./03_macrophage_output//figures/umap_macrophage_clusters-1.png)<!-- -->
+
+We will show some markers specific of macrophages to confirm that
+actually these cells are macrophages.
+
+``` r
+DefaultAssay(M.i) <- "RNA"
+tm <- theme(title = element_text(size=26, family=fontTXT),
+        axis.title = element_text(size=20, family=fontTXT),
+        axis.text = element_text(size=20, family=fontTXT),
+        legend.text = element_text(size=18, family=fontTXT)
+        )
+p1 <- FeaturePlot(M.i, features=c("Lyz2")) + tm
+p2 <- FeaturePlot(M.i, features=c("Cd68")) + tm
+p3 <- FeaturePlot(M.i, features=c("Myh11")) + tm
+p4 <- FeaturePlot(M.i, features=c("Cdh5")) + tm
+## Other candidates, immuno markers
+# FeaturePlot(M.i, features=c("Cd3e")) + tm
+# FeaturePlot(M.i, features=c("Ptprc")) + tm
+CombinePlots(list(p1,p2,p3,p4), ncol = 2)
+```
+
+![](./03_macrophage_output//figures/umap_macrophage_candidates-1.png)<!-- -->
+
+In addition, we show two markers characteristic of M1 and M2 macrophages
+respectively.
+
+``` r
+FeaturePlot(M.i, features=c("Gngt2", "Folr2"))
+```
+
+![](./03_macrophage_output//figures/umap_macrophage_markers-1.png)<!-- -->
+
+Then we start renaming the identities of these clusters accordingly.
+Next plot are going to confirm these identities (cell subtypes) using
+specific markers of these types of macrophages.
+
+``` r
+M.i <- RenameIdents(M.i, c("0"="M1-Macrophage",
+               "1"="M2-Macrophage",
+               "2"="n.a"))
+```
+
+``` r
+M.markers <- getGmt("../data/markers/consensus_plaque.gmt")
+M.markers <- M.markers[grep("M[12]-Macrophages", names(M.markers))]
+setName(M.markers[[1]]) <- "M1"
+setName(M.markers[[2]]) <- "M2"
+#M.markers <- M.markers[grep("Macrophages", names(M.markers))]
+hp <- DoHeatmap3(SeuratObject=M.i, GSC=M.markers, assay="RNA", res="Idents", 
+       row_names_size=14, column_title_size=0,
+       show_hr=FALSE, fontfamily=fontTXT) 
+draw(hp, heatmap_legend_side="right", annotation_legend_side="bottom")
+```
+
+![](./03_macrophage_output//figures/heatmap_macrophage_markers-1.png)<!-- -->
+
+We reproduce the distribution of PHD2cKO signature in the in-vivo
+population, but this time stratifying by subclusters (M1, M2
+macrophages).
+
+``` r
+dat <- data.frame(stim=factor(M.i$orig.ident, levels=c("WT","PHD2cKO")),
+          cluster=Idents(M.i),
+          feat=M.i$PHD2cKO,
+          row.names=colnames(M.i))
+
+# sample size
+sample_size = dat %>% group_by(stim) %>% summarize(num=n())
+# Plot
+dat <- dat %>%
+  left_join(sample_size) %>%
+  mutate(myaxis = paste0(stim, "\n", "n=", num))
+```
+
+    ## Joining, by = "stim"
+
+``` r
+dat$myaxis <- factor(dat$myaxis, levels=sapply(levels(dat$stim), function(z) grep(z, unique(dat$myaxis), value=TRUE)))
+
+ylabTXT="Expression of PHD2CKO signature (AUC)"
+    
+ggplot(dat, aes(x=myaxis, y=feat, fill=cluster)) +
+    geom_violin(width=1.0, lwd=1.2) +
+    geom_jitter(shape=16,size=1.5, 
+        position=position_jitterdodge(jitter.width=0.5,
+                          dodge.width=1.0,
+                          seed=1234)) +
+    xlab("") + ylab(ylabTXT) +
+    theme_cowplot() +
+    theme(
+      axis.text.x = element_text(family=fontTXT, size=28),
+      axis.text.y = element_text(family=fontTXT, size=24),
+      axis.title = element_text(family=fontTXT, size=22),
+      legend.text = element_text(family=fontTXT, size=18),
+      legend.title = element_blank(),
+      legend.position="bottom",
+    )
+```
+
+![](./03_macrophage_output//figures/vln_aucell_phd2ko_macrophages_clusters-1.png)<!-- -->
 
 ## Save the Seurat Object
 
 ``` r
-saveRDS(S, paste0(OUTDIR,"/S.rds"));
+saveRDS(S, paste0(DATADIR,"/S.rds"));
+saveRDS(M.i, paste0(DATADIR,"/M.rds"));
 ```
 
 ## SessionInfo
@@ -1359,82 +724,85 @@ sessionInfo()
     ## [11] LC_MEASUREMENT=en_GB.UTF-8 LC_IDENTIFICATION=C       
     ## 
     ## attached base packages:
-    ## [1] stats4    parallel  stats     graphics  grDevices utils     datasets 
-    ## [8] methods   base     
+    ##  [1] grid      stats4    parallel  stats     graphics  grDevices utils    
+    ##  [8] datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] extrafont_0.17       dplyr_0.8.3          purrr_0.3.2         
-    ##  [4] viper_1.18.1         AUCell_1.6.1         ggrepel_0.8.1       
-    ##  [7] ggplot2_3.2.1        fgsea_1.10.1         Rcpp_1.0.2          
-    ## [10] genesorteR_0.3.1     Matrix_1.2-17        cowplot_1.0.0       
-    ## [13] GSEABase_1.46.0      graph_1.62.0         annotate_1.62.0     
-    ## [16] XML_3.98-1.20        AnnotationDbi_1.46.1 IRanges_2.18.2      
-    ## [19] S4Vectors_0.22.1     Biobase_2.44.0       BiocGenerics_0.30.0 
-    ## [22] Seurat_3.1.0        
+    ##  [1] ComplexHeatmap_2.0.0 extrafont_0.17       dplyr_0.8.3         
+    ##  [4] purrr_0.3.2          viper_1.18.1         AUCell_1.6.1        
+    ##  [7] ggrepel_0.8.1        ggplot2_3.2.1        fgsea_1.10.1        
+    ## [10] Rcpp_1.0.2           genesorteR_0.3.1     Matrix_1.2-17       
+    ## [13] cowplot_1.0.0        GSEABase_1.46.0      graph_1.62.0        
+    ## [16] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
+    ## [19] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
+    ## [22] BiocGenerics_0.30.0  Seurat_3.1.0         rmarkdown_1.15      
+    ## [25] nvimcom_0.9-82      
     ## 
     ## loaded via a namespace (and not attached):
-    ##   [1] backports_1.1.4             fastmatch_1.1-0            
-    ##   [3] plyr_1.8.4                  igraph_1.2.4.1             
-    ##   [5] lazyeval_0.2.2              splines_3.6.1              
-    ##   [7] BiocParallel_1.18.1         listenv_0.7.0              
-    ##   [9] GenomeInfoDb_1.20.0         digest_0.6.21              
-    ##  [11] htmltools_0.3.6             gdata_2.18.0               
-    ##  [13] magrittr_1.5                memoise_1.1.0              
-    ##  [15] cluster_2.1.0               mixtools_1.1.0             
-    ##  [17] ROCR_1.0-7                  globals_0.12.4             
-    ##  [19] RcppParallel_4.4.3          matrixStats_0.55.0         
-    ##  [21] R.utils_2.9.0               extrafontdb_1.0            
-    ##  [23] colorspace_1.4-1            blob_1.2.0                 
-    ##  [25] xfun_0.9                    crayon_1.3.4               
-    ##  [27] RCurl_1.95-4.12             jsonlite_1.6               
-    ##  [29] zeallot_0.1.0               survival_2.44-1.1          
-    ##  [31] zoo_1.8-6                   ape_5.3                    
-    ##  [33] glue_1.3.1                  gtable_0.3.0               
-    ##  [35] zlibbioc_1.30.0             XVector_0.24.0             
-    ##  [37] leiden_0.3.1                DelayedArray_0.10.0        
-    ##  [39] Rttf2pt1_1.3.8              future.apply_1.3.0         
-    ##  [41] scales_1.0.0                pheatmap_1.0.12            
-    ##  [43] DBI_1.0.0                   bibtex_0.4.2               
-    ##  [45] metap_1.1                   viridisLite_0.3.0          
-    ##  [47] xtable_1.8-4                reticulate_1.13            
-    ##  [49] bit_1.1-14                  rsvd_1.0.2                 
-    ##  [51] mclust_5.4.5                SDMTools_1.1-221.1         
-    ##  [53] tsne_0.1-3                  htmlwidgets_1.3            
-    ##  [55] httr_1.4.1                  gplots_3.0.1.1             
-    ##  [57] RColorBrewer_1.1-2          ica_1.0-2                  
-    ##  [59] pkgconfig_2.0.3             R.methodsS3_1.7.1          
-    ##  [61] uwot_0.1.4                  labeling_0.3               
-    ##  [63] tidyselect_0.2.5            rlang_0.4.0                
-    ##  [65] reshape2_1.4.3              later_0.8.0                
-    ##  [67] munsell_0.5.0               tools_3.6.1                
-    ##  [69] RSQLite_2.1.2               ggridges_0.5.1             
-    ##  [71] evaluate_0.14               stringr_1.4.0              
-    ##  [73] yaml_2.2.0                  npsurv_0.4-0               
-    ##  [75] knitr_1.24                  bit64_0.9-7                
-    ##  [77] fitdistrplus_1.0-14         caTools_1.17.1.2           
-    ##  [79] RANN_2.6.1                  pbapply_1.4-2              
-    ##  [81] future_1.14.0               nlme_3.1-141               
-    ##  [83] mime_0.7                    R.oo_1.22.0                
-    ##  [85] compiler_3.6.1              plotly_4.9.0               
-    ##  [87] png_0.1-7                   e1071_1.7-2                
-    ##  [89] lsei_1.2-0                  tibble_2.1.3               
-    ##  [91] stringi_1.4.3               lattice_0.20-38            
-    ##  [93] vctrs_0.2.0                 pillar_1.4.2               
-    ##  [95] lifecycle_0.1.0             Rdpack_0.11-0              
-    ##  [97] lmtest_0.9-37               RcppAnnoy_0.0.13           
-    ##  [99] data.table_1.12.8           bitops_1.0-6               
-    ## [101] irlba_2.3.3                 gbRd_0.4-11                
-    ## [103] httpuv_1.5.2                GenomicRanges_1.36.0       
-    ## [105] R6_2.4.0                    promises_1.0.1             
-    ## [107] KernSmooth_2.23-16          gridExtra_2.3              
-    ## [109] codetools_0.2-16            MASS_7.3-51.4              
-    ## [111] gtools_3.8.1                assertthat_0.2.1           
-    ## [113] SummarizedExperiment_1.14.1 withr_2.1.2                
-    ## [115] sctransform_0.2.0           GenomeInfoDbData_1.2.1     
-    ## [117] grid_3.6.1                  class_7.3-15               
-    ## [119] tidyr_1.0.0                 rmarkdown_1.15             
-    ## [121] segmented_1.0-0             Rtsne_0.15                 
-    ## [123] shiny_1.3.2
+    ##   [1] circlize_0.4.7              backports_1.1.4            
+    ##   [3] fastmatch_1.1-0             plyr_1.8.4                 
+    ##   [5] igraph_1.2.4.1              lazyeval_0.2.2             
+    ##   [7] splines_3.6.1               BiocParallel_1.18.1        
+    ##   [9] listenv_0.7.0               GenomeInfoDb_1.20.0        
+    ##  [11] digest_0.6.21               htmltools_0.3.6            
+    ##  [13] gdata_2.18.0                magrittr_1.5               
+    ##  [15] memoise_1.1.0               cluster_2.1.0              
+    ##  [17] mixtools_1.1.0              ROCR_1.0-7                 
+    ##  [19] globals_0.12.4              RcppParallel_4.4.3         
+    ##  [21] matrixStats_0.55.0          R.utils_2.9.0              
+    ##  [23] extrafontdb_1.0             colorspace_1.4-1           
+    ##  [25] blob_1.2.0                  xfun_0.9                   
+    ##  [27] crayon_1.3.4                RCurl_1.95-4.12            
+    ##  [29] jsonlite_1.6                zeallot_0.1.0              
+    ##  [31] survival_2.44-1.1           zoo_1.8-6                  
+    ##  [33] ape_5.3                     glue_1.3.1                 
+    ##  [35] gtable_0.3.0                zlibbioc_1.30.0            
+    ##  [37] XVector_0.24.0              leiden_0.3.1               
+    ##  [39] GetoptLong_0.1.7            DelayedArray_0.10.0        
+    ##  [41] Rttf2pt1_1.3.8              shape_1.4.4                
+    ##  [43] future.apply_1.3.0          scales_1.0.0               
+    ##  [45] pheatmap_1.0.12             DBI_1.0.0                  
+    ##  [47] bibtex_0.4.2                metap_1.1                  
+    ##  [49] viridisLite_0.3.0           xtable_1.8-4               
+    ##  [51] clue_0.3-57                 reticulate_1.13            
+    ##  [53] bit_1.1-14                  rsvd_1.0.2                 
+    ##  [55] mclust_5.4.5                SDMTools_1.1-221.1         
+    ##  [57] tsne_0.1-3                  htmlwidgets_1.3            
+    ##  [59] httr_1.4.1                  gplots_3.0.1.1             
+    ##  [61] RColorBrewer_1.1-2          ica_1.0-2                  
+    ##  [63] pkgconfig_2.0.3             R.methodsS3_1.7.1          
+    ##  [65] uwot_0.1.4                  labeling_0.3               
+    ##  [67] tidyselect_0.2.5            rlang_0.4.0                
+    ##  [69] reshape2_1.4.3              later_0.8.0                
+    ##  [71] munsell_0.5.0               tools_3.6.1                
+    ##  [73] RSQLite_2.1.2               ggridges_0.5.1             
+    ##  [75] evaluate_0.14               stringr_1.4.0              
+    ##  [77] yaml_2.2.0                  npsurv_0.4-0               
+    ##  [79] knitr_1.24                  bit64_0.9-7                
+    ##  [81] fitdistrplus_1.0-14         caTools_1.17.1.2           
+    ##  [83] RANN_2.6.1                  pbapply_1.4-2              
+    ##  [85] future_1.14.0               nlme_3.1-141               
+    ##  [87] mime_0.7                    R.oo_1.22.0                
+    ##  [89] compiler_3.6.1              plotly_4.9.0               
+    ##  [91] png_0.1-7                   e1071_1.7-2                
+    ##  [93] lsei_1.2-0                  tibble_2.1.3               
+    ##  [95] stringi_1.4.3               RSpectra_0.15-0            
+    ##  [97] lattice_0.20-38             vctrs_0.2.0                
+    ##  [99] pillar_1.4.2                lifecycle_0.1.0            
+    ## [101] GlobalOptions_0.1.0         Rdpack_0.11-0              
+    ## [103] lmtest_0.9-37               RcppAnnoy_0.0.13           
+    ## [105] data.table_1.12.8           bitops_1.0-6               
+    ## [107] irlba_2.3.3                 gbRd_0.4-11                
+    ## [109] httpuv_1.5.2                GenomicRanges_1.36.0       
+    ## [111] R6_2.4.0                    promises_1.0.1             
+    ## [113] KernSmooth_2.23-16          gridExtra_2.3              
+    ## [115] codetools_0.2-16            MASS_7.3-51.4              
+    ## [117] gtools_3.8.1                assertthat_0.2.1           
+    ## [119] SummarizedExperiment_1.14.1 rjson_0.2.20               
+    ## [121] withr_2.1.2                 sctransform_0.2.0          
+    ## [123] GenomeInfoDbData_1.2.1      class_7.3-15               
+    ## [125] tidyr_1.0.0                 segmented_1.0-0            
+    ## [127] Rtsne_0.15                  shiny_1.3.2
 
 ``` r
 {                                                                                                                                                                                                           

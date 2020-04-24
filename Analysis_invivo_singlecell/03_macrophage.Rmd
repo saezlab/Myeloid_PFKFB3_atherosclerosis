@@ -1,14 +1,34 @@
 ---
-title: "Investigation of the role of PHD2 in-vivo atherogenesis in Macrophages"
-author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de"
+title: "Investigation of the role of PHD2 atherogenesis in in-vivo Macrophages"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+## Setup
+We define a random seed number for reproducibility, file structure for the output, 
+and load essential libraries
 
-## Load libraries
+### Environment
+```{r env}
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./03_macrophage_output/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
+```
+
+### Load libraries
 ```{r}
 suppressPackageStartupMessages(require(Seurat))
 suppressPackageStartupMessages(require(GSEABase))
@@ -24,24 +44,13 @@ suppressPackageStartupMessages(require(dplyr))
 source("../src/graphics.R")
 source("../src/seurat_fx.R")
 ```
-### Setting-up environment
-The environment will be set with a random seed number for reproducibility and an output folder
-for processed data and figures.
-
-```{r env}
-# Seed number
-set.seed(1234)
-# Output directory
-OUTDIR <- "./output/03_macrophages"
-if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
-# Input data
-sobj <- "./output/02_assignment/S.rds"
-```
-
 
 ## Load data
 Read the Seurat Object from second step.
 ```{r load_seurat}
+# Input data
+sobj <- "./02_identity_output/data/S.rds"
+# Read 
 if(file.exists(sobj)) {
 	S <- readRDS(sobj)
 } else {
@@ -61,10 +70,7 @@ The section will investigate if the penetrance of this gene perturbation is enou
 average population of the mouse replicate.
 
 ### Differential gene expression
-```{r scatterplot_macrophages_PHD2cKO_vs_PHD2wt, fig.width=5, fig.height=5, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
-MARKERS.OUTDIR <- paste0(OUTDIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt")
-if(!dir.exists(MARKERS.OUTDIR)) dir.create(MARKERS.OUTDIR);
-
+```{r scatterplot_macrophages_PHD2cKO_vs_PHD2wt, fig.width=5, fig.height=5, dpi=300}
 S1 <- S[, S@active.ident=="Macrophage"]
 
 Idents(S1) <- "stim"
@@ -94,7 +100,7 @@ dge$gene <- rownames(dge)
 dge <- dge[,c("cluster", "gene", cols_names)]
    
 write.table(dge,
-            file = paste0(MARKERS.OUTDIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt_DEGs.tsv"),
+            file = paste0(DATADIR,"/Macrophages_avg_PHD2cKO_vs_PHD2wt_DEGs.tsv"),
             sep="\t",col.names = TRUE, row.names = FALSE, quote=FALSE
 )
 ```
@@ -145,9 +151,8 @@ hypothesis that PHD2-KO perturbation triggers a strong hypoxia response. It is e
 that the PHD2-cKO condition presents an over-representation of cells responding to hypoxia.
 
 ### Dorothea focused on Hif1a
-Text
 
-```{r vln_macrophages_dorothea_hif1a, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+```{r vln_macrophages_dorothea_hif1a, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
 # load regulons
 df2regulon <- function(df, regulator_name="tf") {
   regulon = df %>% split(.[regulator_name]) %>% map(function(dat) {
@@ -163,8 +168,9 @@ regul <- df2regulon(df=regulon.df)
 
 # Calculate TF activities
 TF <- viper(eset = as.matrix(S@assays$RNA@data), regulon = regul,
-              nes = T, method = "none", minsize = 4,
-              eset.filter = F, adaptive.size = F)
+              nes = T, minsize = 4,
+              eset.filter = F, adaptive.size = F,
+	      verbose=FALSE)
   
 # Add them as metadata
 stopifnot(colnames(S) == colnames(TF))
@@ -180,9 +186,8 @@ VlnPlot.stim(S[,Idents(S)=="Macrophage"],
 ```
 
 ### PROGENy focused on hypoxia response
-Text
 
-```{r vln_progeny_hypoxia_macrophages, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+```{r vln_progeny_hypoxia_macrophages, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
 ### Progeny ####
 progeny.mat <- read.table("../data/Prior/progeny_matrix_mouse_v1.txt",sep=",",header=TRUE)
 rownames(progeny.mat) <- progeny.mat$X
@@ -206,8 +211,6 @@ rm(common,prog)
 VlnPlot.stim(S[,Idents(S)=="Macrophage"], 
      meta.feature = "Hypoxia_response", ylab="Hypoxia response (Score)", 
      fontTXT=fontTXT)
-
-
 ```
 
 ### Enrichment of in-vitro PHD2-KO signature
@@ -226,7 +229,7 @@ invitro.gs <- names(sort(invitro.sign[common],decreasing = TRUE))[1:50]
 print(invitro.gs)
 ```
 
-```{r vln_aucell_phd2ko_macrophages, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+```{r vln_aucell_phd2ko_macrophages, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
 # Build rankings for AUC
 cells_rankings <- AUCell_buildRankings(as.matrix(S@assays$RNA@data))
 # Use top N (e.g. 50) to calculate enrichment at single-cell level
@@ -248,7 +251,7 @@ VlnPlot.stim(S[,Idents(S)=="Macrophage"],
 
 ### Pair-wise comparison of these markers of hypoxia response
 
-```{r pairs_hypoxia_macrophages, fig.width=9, fig.height=9, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+```{r pairs_hypoxia_macrophages, fig.width=9, fig.height=9, dpi=300, warning=FALSE}
 # Define colors for ggplot
 cond.cols <- c("WT"="grey", "PHD2cKO"="red")
 
@@ -288,16 +291,16 @@ S$PHD2cKO_class[Idents(S)=="Macrophage"] <- ifelse(S$PHD2cKO[Idents(S)=="Macroph
 
 S$PHD2cKO_class2 <- paste0(S$stim,"_",S$PHD2cKO_class)
 
+print(cutoff)
 ```
+The cutoff of Q3 in PHD2cKO is `r cutoff`.
 
-```{r vln_aucell_phd2ko_macrophages_wCutoff, fig.width=6, fig.height=7, dpi=300, fig.path="./output/03_macrophages/", dev=c('png','tiff')}
+```{r vln_aucell_phd2ko_macrophages_wCutoff, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
 # Visualization focused on Macrophages population
 VlnPlot.stim(S[,Idents(S)=="Macrophage"], 
      meta.feature = "PHD2cKO", ylab="Expression of PHD2cKO signature (AUC)", 
      fontTXT=fontTXT) + geom_hline(yintercept=cutoff)
 ```
-
-
 
 ```{r}
 S1 <- S[, Idents(S)=="Macrophage"] 
@@ -307,7 +310,7 @@ dge <- FindMarkers(S1, ident.1 = "PHD2cKO_High", ident.2 = "WT_Low",
 ```
 
 
-```{r volcano_PHD2cKOsign_high_vs_low, dpi=300, fig.width=8, fig.height=6, fig.path='./output/03_macrophages/', dev = c('png','tiff')}
+```{r volcano_PHD2cKOsign_high_vs_low, dpi=300, fig.width=8, fig.height=6, warning=FALSE}
 Mac_interesting_genes <- getGmt("../data/Prior/MC_PHD2_diff.gmt")
 Mac_interesting_genes <- unlist(geneIds(Mac_interesting_genes))
 if(any(!Mac_interesting_genes %in% rownames(S1))) {
@@ -344,9 +347,144 @@ p+geom_label_repel(data=dge[dge$show,],
 	  )
 ```
 
+## Zoom-in Macrophages
+
+```{r umap_macrophages_condition, dpi=300}
+M.list <- SplitObject(S[, Idents(S)=="Macrophage"],
+		      split.by="orig.ident")
+
+for(i in names(M.list)){
+	M.list[[i]] <- NormalizeData(M.list[[i]], verbose=FALSE)
+	M.list[[i]] <- ScaleData(M.list[[i]], verbose=FALSE)
+	M.list[[i]] <- FindVariableFeatures(M.list[[i]], 
+					   selection.method = "vst",
+					   nfeatures = 2000, verbose = FALSE)
+
+}
+M.anchors <- FindIntegrationAnchors(object.list = M.list, dims = 1:30)
+M.i <- IntegrateData(anchorset = M.anchors, dims = 1:30)
+
+# Clean metadata
+M.i@meta.data <- M.i@meta.data[, grep("snn_res", colnames(M.i@meta.data), invert=TRUE)]
+
+if(all(dim(M.i@assays$RNA@scale.data) == c(0,0))) {
+M.i@assays$RNA@scale.data <- cbind(M.list[[1]]@assays$RNA@scale.data,
+				   M.list[[2]]@assays$RNA@scale.data)[,colnames(M.i)] 
+}
+
+DefaultAssay(M.i) <- "integrated"
+
+# Run the standard workflow for visualization and clustering
+M.i <- ScaleData(M.i, verbose = FALSE)
+M.i <- RunPCA(M.i, npcs = 30, verbose = FALSE)
+# ElbowPlot(M.i)
+M.i <- RunUMAP(M.i, reduction = "pca", dims = 1:15)
+
+DimPlot(M.i, reduction="umap", group.by="orig.ident", cols=c("red","grey"))
+
+
+```
+
+Second round of unsupervised clustering to find even major differences in this cell 
+population (macrophages).
+```{r umap_macrophage_clusters, dpi=300}
+set.seed(1234)
+# Find clusters
+M.i <- FindNeighbors(M.i, dims = 1:15)
+M.i <- FindClusters(M.i, resolution = 0.1)
+table(Idents(M.i))
+
+
+DimPlot(M.i, reduction="umap")
+```
+
+We will show some markers specific of macrophages to confirm that actually these 
+cells are macrophages.
+```{r umap_macrophage_candidates, fig.width=10, fig.height=8, dpi=300, warning=FALSE}
+DefaultAssay(M.i) <- "RNA"
+tm <- theme(title = element_text(size=26, family=fontTXT),
+	    axis.title = element_text(size=20, family=fontTXT),
+	    axis.text = element_text(size=20, family=fontTXT),
+	    legend.text = element_text(size=18, family=fontTXT)
+	    )
+p1 <- FeaturePlot(M.i, features=c("Lyz2")) + tm
+p2 <- FeaturePlot(M.i, features=c("Cd68")) + tm
+p3 <- FeaturePlot(M.i, features=c("Myh11")) + tm
+p4 <- FeaturePlot(M.i, features=c("Cdh5")) + tm
+## Other candidates, immuno markers
+# FeaturePlot(M.i, features=c("Cd3e")) + tm
+# FeaturePlot(M.i, features=c("Ptprc")) + tm
+CombinePlots(list(p1,p2,p3,p4), ncol = 2)
+```
+
+
+In addition, we show two markers characteristic of M1 and M2 macrophages respectively.
+```{r umap_macrophage_markers, fig.width=10, fig.height=4, dpi=300}
+FeaturePlot(M.i, features=c("Gngt2", "Folr2"))
+```
+
+Then we start renaming the identities of these clusters accordingly. Next plot are
+going to confirm these identities (cell subtypes) using specific markers of these types 
+of macrophages.
+```{r macrophages_rids}
+M.i <- RenameIdents(M.i, c("0"="M1-Macrophage",
+			   "1"="M2-Macrophage",
+			   "2"="n.a"))
+```
+
+```{r heatmap_macrophage_markers, fig.width=7, fig.height=4, dpi=300, warning=FALSE}
+M.markers <- getGmt("../data/markers/consensus_plaque.gmt")
+M.markers <- M.markers[grep("M[12]-Macrophages", names(M.markers))]
+setName(M.markers[[1]]) <- "M1"
+setName(M.markers[[2]]) <- "M2"
+#M.markers <- M.markers[grep("Macrophages", names(M.markers))]
+hp <- DoHeatmap3(SeuratObject=M.i, GSC=M.markers, assay="RNA", res="Idents", 
+	   row_names_size=14, column_title_size=0,
+	   show_hr=FALSE, fontfamily=fontTXT) 
+draw(hp, heatmap_legend_side="right", annotation_legend_side="bottom")
+```
+
+We reproduce the distribution of PHD2cKO signature in the in-vivo population, but this time 
+stratifying by subclusters (M1, M2 macrophages).
+```{r vln_aucell_phd2ko_macrophages_clusters, fig.width=8, fig.height=7, dpi=300, warning=FALSE}
+dat <- data.frame(stim=factor(M.i$orig.ident, levels=c("WT","PHD2cKO")),
+		  cluster=Idents(M.i),
+		  feat=M.i$PHD2cKO,
+		  row.names=colnames(M.i))
+
+# sample size
+sample_size = dat %>% group_by(stim) %>% summarize(num=n())
+# Plot
+dat <- dat %>%
+  left_join(sample_size) %>%
+  mutate(myaxis = paste0(stim, "\n", "n=", num))
+dat$myaxis <- factor(dat$myaxis, levels=sapply(levels(dat$stim), function(z) grep(z, unique(dat$myaxis), value=TRUE)))
+
+ylabTXT="Expression of PHD2CKO signature (AUC)"
+	
+ggplot(dat, aes(x=myaxis, y=feat, fill=cluster)) +
+    geom_violin(width=1.0, lwd=1.2) +
+    geom_jitter(shape=16,size=1.5, 
+		position=position_jitterdodge(jitter.width=0.5,
+					      dodge.width=1.0,
+					      seed=1234)) +
+    xlab("") + ylab(ylabTXT) +
+    theme_cowplot() +
+    theme(
+      axis.text.x = element_text(family=fontTXT, size=28),
+      axis.text.y = element_text(family=fontTXT, size=24),
+      axis.title = element_text(family=fontTXT, size=22),
+      legend.text = element_text(family=fontTXT, size=18),
+      legend.title = element_blank(),
+      legend.position="bottom",
+    )
+```
+
+
 ## Save the Seurat Object
 ```{r seurat_obj}
-saveRDS(S, paste0(OUTDIR,"/S.rds"));
+saveRDS(S, paste0(DATADIR,"/S.rds"));
+saveRDS(M.i, paste0(DATADIR,"/M.rds"));
 ```
 
 ## SessionInfo

@@ -232,6 +232,31 @@ for(cont in colnames(cont.mat)) {
 }
 ```
 
+We conclude this section with the charaterization of the cellular state in the two experiments 
+using the hallmark gene set collection from MsigDB.
+We are particularly interested in PHD2cKO Macrophages. 
+
+```{r}
+mmu2hsa <- readRDS("../data/Gene_annotation/hgnc2mgi_hsa2mmu.rds")
+
+H <- getGmt("../data/MSigDB/h.all.v7.0.symbols.gmt")
+H <- lapply(geneIds(H), function(z) unlist(sapply(z, function(j) mmu2hsa[[j]])))
+
+set.seed(1234)
+H.res <- apply(eBay$t,2,function(rnk) {
+  res <- fgsea(pathways = H, stats = rnk, nperm = 1000)
+  res <- res[order(res$padj, decreasing = FALSE),]
+  return(res)
+})
+
+for(cont in names(H.res)) {
+  res.tab <- H.res[[cont]]
+  res.tab$leadingEdge <- unlist(lapply(res.tab$leadingEdge, function(z) paste(z, collapse = ",")))
+  write.table(res.tab, paste0(DATADIR,cont,"_Hallmarks_gsea.tsv"),sep="\t",
+              row.names=FALSE, col.names=TRUE, quote=FALSE)
+}
+```
+
 ## Visualization of differentially expressed genes
 We are interested in a series of genes for each contrast based on the experimental 
 evidence (qPCR and Western blots) carried out in the laboratory.
@@ -339,9 +364,6 @@ p <- p+geom_label_repel(data=topTab[topTab$show,],
       )
 p
 ```
-
-
-
 
 ## Save processed data
 We are going to save the eBayes object for downstream analysis.

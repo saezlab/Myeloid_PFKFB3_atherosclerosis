@@ -272,6 +272,39 @@ for(cont in colnames(cont.mat)) {
 
 ![](./01_DGE_output//figures/unnamed-chunk-7-3.png)<!-- -->![](./01_DGE_output//figures/unnamed-chunk-7-4.png)<!-- -->
 
+We conclude this section with the charaterization of the cellular state
+in the two experiments using the hallmark gene set collection from
+MsigDB. We are particularly interested in PHD2cKO Macrophages.
+
+``` r
+mmu2hsa <- readRDS("../data/Gene_annotation/hgnc2mgi_hsa2mmu.rds")
+
+H <- getGmt("../data/MSigDB/h.all.v7.0.symbols.gmt")
+H <- lapply(geneIds(H), function(z) unlist(sapply(z, function(j) mmu2hsa[[j]])))
+
+set.seed(1234)
+H.res <- apply(eBay$t,2,function(rnk) {
+  res <- fgsea(pathways = H, stats = rnk, nperm = 1000)
+  res <- res[order(res$padj, decreasing = FALSE),]
+  return(res)
+})
+```
+
+    ## Warning in fgsea(pathways = H, stats = rnk, nperm = 1000): There are ties in the preranked stats (0.09% of the list).
+    ## The order of those tied genes will be arbitrary, which may produce unexpected results.
+    
+    ## Warning in fgsea(pathways = H, stats = rnk, nperm = 1000): There are ties in the preranked stats (0.09% of the list).
+    ## The order of those tied genes will be arbitrary, which may produce unexpected results.
+
+``` r
+for(cont in names(H.res)) {
+  res.tab <- H.res[[cont]]
+  res.tab$leadingEdge <- unlist(lapply(res.tab$leadingEdge, function(z) paste(z, collapse = ",")))
+  write.table(res.tab, paste0(DATADIR,cont,"_Hallmarks_gsea.tsv"),sep="\t",
+              row.names=FALSE, col.names=TRUE, quote=FALSE)
+}
+```
+
 ## Visualization of differentially expressed genes
 
 We are interested in a series of genes for each contrast based on the
@@ -465,19 +498,19 @@ sessionInfo()
     ## [8] methods   base     
     ## 
     ## other attached packages:
-    ##  [1] gridExtra_2.3        reshape2_1.4.3       fgsea_1.10.1        
-    ##  [4] Rcpp_1.0.2           GSEABase_1.46.0      graph_1.62.0        
-    ##  [7] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
-    ## [10] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
-    ## [13] BiocGenerics_0.30.0  cowplot_1.0.0        extrafont_0.17      
-    ## [16] ggrepel_0.8.1        ggplot2_3.2.1        dplyr_0.8.3         
-    ## [19] edgeR_3.26.7         limma_3.40.6         rmarkdown_1.15      
+    ##  [1] rmarkdown_1.15       gridExtra_2.3        reshape2_1.4.3      
+    ##  [4] fgsea_1.10.1         Rcpp_1.0.2           GSEABase_1.46.0     
+    ##  [7] graph_1.62.0         annotate_1.62.0      XML_3.98-1.20       
+    ## [10] AnnotationDbi_1.46.1 IRanges_2.18.2       S4Vectors_0.22.1    
+    ## [13] Biobase_2.44.0       BiocGenerics_0.30.0  cowplot_1.0.0       
+    ## [16] extrafont_0.17       ggrepel_0.8.1        ggplot2_3.2.1       
+    ## [19] dplyr_0.8.3          edgeR_3.26.7         limma_3.40.6        
     ## [22] nvimcom_0.9-82      
     ## 
     ## loaded via a namespace (and not attached):
     ##  [1] locfit_1.5-9.1      lattice_0.20-38     assertthat_0.2.1   
-    ##  [4] zeallot_0.1.0       digest_0.6.21       plyr_1.8.4         
-    ##  [7] R6_2.4.0            backports_1.1.4     RSQLite_2.1.2      
+    ##  [4] zeallot_0.1.0       digest_0.6.21       R6_2.4.0           
+    ##  [7] plyr_1.8.4          backports_1.1.4     RSQLite_2.1.2      
     ## [10] evaluate_0.14       pillar_1.4.2        rlang_0.4.0        
     ## [13] lazyeval_0.2.2      data.table_1.12.8   extrafontdb_1.0    
     ## [16] blob_1.2.0          Matrix_1.2-17       labeling_0.3       

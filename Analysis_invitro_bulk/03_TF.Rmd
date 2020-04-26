@@ -110,7 +110,7 @@ for(cont in colnames(TF.cont.mat)) {
   topTab <- topTable(TF.eBay, coef=cont, number = Inf)
   # DEGs table
   write.table(topTab, file=paste0(DATADIR,cont,"_diffTF.tsv"),sep="\t",
-                                  row.names=FALSE, col.names=TRUE, quote=FALSE)
+                                  row.names=TRUE, col.names=NA, quote=FALSE)
   # Volcano plot
   plot(TF.eBay$coefficients[,cont], -log10(TF.eBay$p.value[,cont]),
        xlab="log2-fold-change", ylab="-log10(pvalue)", cex=0.7)

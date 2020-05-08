@@ -1,4 +1,5 @@
-Inference of TF activities in Mieloid PHD2 deficiency in atherogenesis
+Inference of pathway activities in Mieloid PHD2 deficiency in
+atherogenesis
 ================
 Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de> -
 ORCID: 0000-0003-0780-6683

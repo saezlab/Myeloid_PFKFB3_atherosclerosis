@@ -494,29 +494,10 @@ plot_grid(figures_without_legend,
           rel_heights = c(10,2), nrow = 2, align = "hv")
 ```
 
-
-## Extract interactome for downstream analysis
-* Target genes from Spp1: We have selected Spp1 for potential validation and downstream analysis given the molecular biology of this ligand
-in fibrosis.
-
-```{r}
-Spp1_target_links <- get_weighted_ligand_target_links("Spp1", geneset_oi, ligand_target_matrix, n = 250)
-
-write.table(Spp1_target_links, file=paste0(DATADIR,"/Spp1_target_links.tsv"),
-	    sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
-```
-
-* Receptors genes from Spp1
-```{r}
-Spp1_receptors <- sort(lr_network_top_matrix[,"Spp1"], decreasing=TRUE)
-Spp1_receptors <- Spp1_receptors[Spp1_receptors!=0]
-
-```
-
 ## Assess performance of target prediction
 
 For the top 20 ligands, we will now build a multi-ligand model that uses all top-ranked ligands to predict
-whether a gene belongs to the p-EMT program of not. This classification model will be trained via 
+whether a gene belongs to the collagens program of not. This classification model will be trained via 
 cross-validation and returns a probability for every gene.
 
 ```{r}
@@ -550,7 +531,7 @@ target_prediction_performances_cv$pearson %>% mean()
 Evaluate now whether genes belonging to the gene set are more likely to be top-predicted. 
 We will look at the top 5% of predicted targets here.
 ```{r}
-# get performance: how many p-EMT genes and non-p-EMT-genes among top 5% predicted targets
+# get performance: how many collagen genes and non-collagen-genes among top 5% predicted targets
 target_prediction_performances_discrete_cv = gs_gene_predictions_top20_list %>% 
 	lapply(calculate_fraction_top_predicted, quantile_cutoff = 0.95) %>% 
 	bind_rows() %>% ungroup() %>% mutate(round=rep(1:length(gs_gene_predictions_top20_list), each = 2))
@@ -562,7 +543,7 @@ What is the fraction of signature that belongs to the top 5% predicted targets?
 target_prediction_performances_discrete_cv %>% filter(true_target) %>% .$fraction_positive_predicted %>% mean()
 ```
 
-What is the fraction of non-p-EMT genes that belongs to the top 5% predicted targets?
+What is the fraction of non-collagen genes that belongs to the top 5% predicted targets?
 ```{r}
 target_prediction_performances_discrete_cv %>% filter(!true_target) %>% .$fraction_positive_predicted %>% mean()
 ```
@@ -583,130 +564,6 @@ top_predicted_genes = seq(length(gs_gene_predictions_top20_list)) %>%
 	lapply(get_top_predicted_genes, gs_gene_predictions_top20_list) %>% 
 	reduce(full_join, by = c("gene","true_target"))
 top_predicted_genes %>% filter(true_target)
-```
-
-
-## Ligand target signaling path
-
-```{r}
-ligand_tf_matrix <- readRDS(("../data/nichenetr/ligand_tf_matrix.rds"))
-# Because expr data is from mouse, we will convert it
-colnames(ligand_tf_matrix) = ligand_tf_matrix %>% colnames() %>% convert_human_to_mouse_symbols()
-rownames(ligand_tf_matrix) = ligand_tf_matrix %>% rownames() %>% convert_human_to_mouse_symbols()
-ligand_tf_matrix = ligand_tf_matrix %>% .[!is.na(rownames(ligand_tf_matrix)), !is.na(colnames(ligand_tf_matrix))]
-
-sig_network = readRDS(("../data/nichenetr/signaling_network.rds"))
-sig_network$to = sig_network$to %>% convert_human_to_mouse_symbols()
-sig_network$from = sig_network$from %>% convert_human_to_mouse_symbols()
-
-
-gr_network = readRDS(("../data/nichenetr/gr_network.rds"))
-gr_network$to = gr_network$to %>% convert_human_to_mouse_symbols()
-gr_network$from = gr_network$from %>% convert_human_to_mouse_symbols()
-```
-
-```{r}
-ligands_all <- "Spp1"
-targets_all <- unlist(Spp1_target_links[,"target"])
-
-active_signaling_network = get_ligand_signaling_path(ligand_tf_matrix = ligand_tf_matrix, 
-						     ligands_all = ligands_all, 
-						     targets_all = targets_all, 
-						     top_n_regulators= 2,
-						     weighted_networks = weighted_networks)
-
-# For better visualization of edge weigths: normalize edge weights to make them comparable between signaling and gene regulatory interactions
-active_signaling_network_min_max = active_signaling_network
-active_signaling_network_min_max$sig = active_signaling_network_min_max$sig %>% 
-	mutate(weight = ((weight-min(weight))/(max(weight)-min(weight))) + 0.75)
-
-active_signaling_network_min_max$gr = active_signaling_network_min_max$gr %>% 
-	mutate(weight = ((weight-min(weight))/(max(weight)-min(weight))) + 0.75)
-
-graph_min_max = diagrammer_format_signaling_graph(signaling_graph_list = active_signaling_network_min_max, 
-						  ligands_all = ligands_all, targets_all = targets_all, 
-						  sig_color = "indianred", gr_color = "steelblue")
-# Change layout
-graph_min_max$global_attrs[1, "value"] <- "dot"
-# Change fontname
-graph_min_max$global_attrs[4, "value"] <- fontTXT
-graph_min_max$global_attrs[13, "value"] <- fontTXT
-# Change fontsize
-graph_min_max$global_attrs[5, "value"] <- 15
-```
-
-Let's export for visualization
-```{r}
-##For HTML visualization
-#DiagrammeR::render_graph(graph_min_max, layout = "tree",height=1000, width=400)
-
-# Export as a PNG and SVG, then embed the figure in markdown
-# My solution: 
-#	1st export it to DOT format for the records.
-#	2nd export it to PS
-#	3rd then from PS, export it into PNG and TIFF with density 300
-cat(generate_dot(graph_min_max), file=paste0(FIGDIR,"graph.dot"))
-export_graph(graph_min_max, 
-	     file_name=paste0(FIGDIR,"/graph.ps"),
-	     file_type="ps")
-system(paste("convert", 
-	     "-density 300",
-	     paste0(FIGDIR,"/graph.ps"),
-	     paste0(FIGDIR,"/graph.tiff")))
-system(paste("convert", 
-	     "-density 300",
-	     paste0(FIGDIR,"/graph.ps"),
-	     paste0(FIGDIR,"/graph.png")))
-
-# Herein a convoluted 2nd strategy to export as png,pdf etc
-# This one has more dependencies
-# 	# Export as a figure
-# 	library(rsvg) 
-# 	library(DiagrammeRsvg)
-# 	library(magrittr)
-# 	
-# DiagrammeR::grViz(generate_dot(graph_min_max), engine="dot") %>%
-#  export_svg %>% charToRaw %>% rsvg_png("/tmp/g.pdf")
-```
-
-![graph](./03_ligand_output/figures/graph.png)
-
-
-```{r}
-data_source_network = infer_supporting_datasources(signaling_graph_list = active_signaling_network,
-						   lr_network = lr_network, 
-						   sig_network = sig_network, 
-						   gr_network = gr_network)
-head(data_source_network) 
-```
-
-Export to Cytoscape (if needed, rerun uncomments in chunk).
-```{r}
-#output_path = paste0(DATADIR,"/Spp1_") 
-#write_output = FALSE # change to TRUE for writing output
-#
-## weighted networks ('import network' in Cytoscape)
-#if(write_output){
-#  bind_rows(active_signaling_network$sig %>% mutate(layer = "signaling"), active_signaling_network$gr %>% mutate(layer = "regulatory")) %>% write_tsv(paste0(output_path,"weighted_signaling_network.txt")) 
-#}
-#
-## networks with information of supporting data sources ('import network' in Cytoscape)
-#if(write_output){
-#data_source_network %>% write_tsv(paste0(output_path,"data_source_network.txt"))
-#}
-#
-## Node annotation table ('import table' in Cytoscape)
-#specific_annotation_tbl = bind_rows(
-#  tibble(gene = ligands_all, annotation = "ligand"),
-#  tibble(gene = targets_all, annotation = "target"),
-#  tibble(gene = c(data_source_network$from, data_source_network$to) %>% unique() %>% setdiff(c(targets_all,ligands_all)) %>% intersect(lr_network$to %>% unique()), annotation = "receptor"),
-#  tibble(gene = c(data_source_network$from, data_source_network$to) %>% unique() %>% setdiff(c(targets_all,ligands_all)) %>% intersect(gr_network$from %>% unique()) %>% setdiff(c(data_source_network$from, data_source_network$to) %>% unique() %>% intersect(lr_network$to %>% unique())),annotation = "transcriptional regulator")
-#)
-#non_specific_annotation_tbl = tibble(gene = c(data_source_network$from, data_source_network$to) %>% unique() %>% setdiff(specific_annotation_tbl$gene), annotation = "signaling mediator")
-#
-#if(write_output){
-#bind_rows(specific_annotation_tbl,non_specific_annotation_tbl) %>% write_tsv(paste0(output_path,"annotation_table.txt"))
-#}
 ```
 
 ## SessionInfo

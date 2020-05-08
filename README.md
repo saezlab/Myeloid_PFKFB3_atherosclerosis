@@ -29,6 +29,6 @@ BMDM cells with and without PHD2-KO were profiled for further investigation.
 
 2. In-vivo experiments with a generated model carrying KO and WT forms of PHD2 in the myeloid 
 lineage (incl. macrophages) were subjected of a high cholesterol diet to promote atherosclerosis. 
-Atherosclerotic plaques (pool n=8 per condition) from this model were subjected of single-cell RNA
-sequencing.
+Atherosclerotic plaques (pool per condition, n=9 and 11 mice for PHD2cKO and WT, respectively) from 
+this model were subjected of single-cell RNA sequencing.
 

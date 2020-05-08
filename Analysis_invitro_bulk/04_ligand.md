@@ -634,36 +634,11 @@ plot_grid(figures_without_legend,
 
 ![](./04_ligand_output//figures/combined_heatmaps_ligand-1.png)<!-- -->
 
-## Extract interactome for downstream analysis
-
-  - Target genes from Spp1: We have selected Spp1 for potential
-    validation and downstream analysis given the molecular biology of
-    this ligand in
-fibrosis.
-
-<!-- end list -->
-
-``` r
-Spp1_target_links <- get_weighted_ligand_target_links("Spp1", geneset_oi, ligand_target_matrix, n = 250)
-
-write.table(Spp1_target_links, file=paste0(DATADIR,"/Spp1_target_links.tsv"),
-        sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
-```
-
-  - Receptors genes from Spp1
-
-<!-- end list -->
-
-``` r
-Spp1_receptors <- sort(lr_network_top_matrix[,"Spp1"], decreasing=TRUE)
-Spp1_receptors <- Spp1_receptors[Spp1_receptors!=0]
-```
-
 ## Assess performance of target prediction
 
 For the top 20 ligands, we will now build a multi-ligand model that uses
-all top-ranked ligands to predict whether a gene belongs to the p-EMT
-program of not. This classification model will be trained via
+all top-ranked ligands to predict whether a gene belongs to the
+collagens program of not. This classification model will be trained via
 cross-validation and returns a probability for every
 gene.
 
@@ -713,7 +688,7 @@ be top-predicted. We will look at the top 5% of predicted targets
 here.
 
 ``` r
-# get performance: how many p-EMT genes and non-p-EMT-genes among top 5% predicted targets
+# get performance: how many collagen genes and non-collagen-genes among top 5% predicted targets
 target_prediction_performances_discrete_cv = gs_gene_predictions_top20_list %>% 
     lapply(calculate_fraction_top_predicted, quantile_cutoff = 0.95) %>% 
     bind_rows() %>% ungroup() %>% mutate(round=rep(1:length(gs_gene_predictions_top20_list), each = 2))
@@ -728,7 +703,7 @@ target_prediction_performances_discrete_cv %>% filter(true_target) %>% .$fractio
 
     ## [1] 0.2634409
 
-What is the fraction of non-p-EMT genes that belongs to the top 5%
+What is the fraction of non-collagen genes that belongs to the top 5%
 predicted
 targets?
 
@@ -777,140 +752,6 @@ top_predicted_genes %>% filter(true_target)
     ## 10 Plxnc1 TRUE        TRUE                       TRUE                      
     ## # … with 18 more rows
 
-## Ligand target signaling path
-
-``` r
-ligand_tf_matrix <- readRDS(("../data/nichenetr/ligand_tf_matrix.rds"))
-# Because expr data is from mouse, we will convert it
-colnames(ligand_tf_matrix) = ligand_tf_matrix %>% colnames() %>% convert_human_to_mouse_symbols()
-rownames(ligand_tf_matrix) = ligand_tf_matrix %>% rownames() %>% convert_human_to_mouse_symbols()
-ligand_tf_matrix = ligand_tf_matrix %>% .[!is.na(rownames(ligand_tf_matrix)), !is.na(colnames(ligand_tf_matrix))]
-
-sig_network = readRDS(("../data/nichenetr/signaling_network.rds"))
-sig_network$to = sig_network$to %>% convert_human_to_mouse_symbols()
-sig_network$from = sig_network$from %>% convert_human_to_mouse_symbols()
-
-
-gr_network = readRDS(("../data/nichenetr/gr_network.rds"))
-gr_network$to = gr_network$to %>% convert_human_to_mouse_symbols()
-gr_network$from = gr_network$from %>% convert_human_to_mouse_symbols()
-```
-
-``` r
-ligands_all <- "Spp1"
-targets_all <- unlist(Spp1_target_links[,"target"])
-
-active_signaling_network = get_ligand_signaling_path(ligand_tf_matrix = ligand_tf_matrix, 
-                             ligands_all = ligands_all, 
-                             targets_all = targets_all, 
-                             top_n_regulators= 2,
-                             weighted_networks = weighted_networks)
-
-# For better visualization of edge weigths: normalize edge weights to make them comparable between signaling and gene regulatory interactions
-active_signaling_network_min_max = active_signaling_network
-active_signaling_network_min_max$sig = active_signaling_network_min_max$sig %>% 
-    mutate(weight = ((weight-min(weight))/(max(weight)-min(weight))) + 0.75)
-
-active_signaling_network_min_max$gr = active_signaling_network_min_max$gr %>% 
-    mutate(weight = ((weight-min(weight))/(max(weight)-min(weight))) + 0.75)
-
-graph_min_max = diagrammer_format_signaling_graph(signaling_graph_list = active_signaling_network_min_max, 
-                          ligands_all = ligands_all, targets_all = targets_all, 
-                          sig_color = "indianred", gr_color = "steelblue")
-# Change layout
-graph_min_max$global_attrs[1, "value"] <- "dot"
-# Change fontname
-graph_min_max$global_attrs[4, "value"] <- fontTXT
-graph_min_max$global_attrs[13, "value"] <- fontTXT
-# Change fontsize
-graph_min_max$global_attrs[5, "value"] <- 15
-```
-
-Let’s export for visualization
-
-``` r
-##For HTML visualization
-#DiagrammeR::render_graph(graph_min_max, layout = "tree",height=1000, width=400)
-
-# Export as a PNG and SVG, then embed the figure in markdown
-# My solution: 
-#   1st export it to DOT format for the records.
-#   2nd export it to PS
-#   3rd then from PS, export it into PNG and TIFF with density 300
-cat(generate_dot(graph_min_max), file=paste0(FIGDIR,"graph.dot"))
-export_graph(graph_min_max, 
-         file_name=paste0(FIGDIR,"/graph.ps"),
-         file_type="ps")
-system(paste("convert", 
-         "-density 300",
-         paste0(FIGDIR,"/graph.ps"),
-         paste0(FIGDIR,"/graph.tiff")))
-system(paste("convert", 
-         "-density 300",
-         paste0(FIGDIR,"/graph.ps"),
-         paste0(FIGDIR,"/graph.png")))
-
-# Herein a convoluted 2nd strategy to export as png,pdf etc
-# This one has more dependencies
-#   # Export as a figure
-#   library(rsvg) 
-#   library(DiagrammeRsvg)
-#   library(magrittr)
-#   
-# DiagrammeR::grViz(generate_dot(graph_min_max), engine="dot") %>%
-#  export_svg %>% charToRaw %>% rsvg_png("/tmp/g.pdf")
-```
-
-![graph](./03_ligand_output/figures/graph.png)
-
-``` r
-data_source_network = infer_supporting_datasources(signaling_graph_list = active_signaling_network,
-                           lr_network = lr_network, 
-                           sig_network = sig_network, 
-                           gr_network = gr_network)
-head(data_source_network) 
-```
-
-    ## # A tibble: 6 x 5
-    ##   from  to    source                   database       layer     
-    ##   <chr> <chr> <chr>                    <chr>          <chr>     
-    ## 1 Cebpb Ccl11 regnetwork_source        regnetwork     regulatory
-    ## 2 Cebpb Ccl3  harmonizome_ENCODE       harmonizome_gr regulatory
-    ## 3 Cebpb Ccl3  harmonizome_TRANSFAC_CUR harmonizome_gr regulatory
-    ## 4 Cebpb Ccl3  regnetwork_source        regnetwork     regulatory
-    ## 5 Cebpb Ccl3  regnetwork_encode        regnetwork     regulatory
-    ## 6 Cebpb Ccl3  ontogenet_coarse         ontogenet      regulatory
-
-Export to Cytoscape (if needed, rerun uncomments in chunk).
-
-``` r
-#output_path = paste0(DATADIR,"/Spp1_") 
-#write_output = FALSE # change to TRUE for writing output
-#
-## weighted networks ('import network' in Cytoscape)
-#if(write_output){
-#  bind_rows(active_signaling_network$sig %>% mutate(layer = "signaling"), active_signaling_network$gr %>% mutate(layer = "regulatory")) %>% write_tsv(paste0(output_path,"weighted_signaling_network.txt")) 
-#}
-#
-## networks with information of supporting data sources ('import network' in Cytoscape)
-#if(write_output){
-#data_source_network %>% write_tsv(paste0(output_path,"data_source_network.txt"))
-#}
-#
-## Node annotation table ('import table' in Cytoscape)
-#specific_annotation_tbl = bind_rows(
-#  tibble(gene = ligands_all, annotation = "ligand"),
-#  tibble(gene = targets_all, annotation = "target"),
-#  tibble(gene = c(data_source_network$from, data_source_network$to) %>% unique() %>% setdiff(c(targets_all,ligands_all)) %>% intersect(lr_network$to %>% unique()), annotation = "receptor"),
-#  tibble(gene = c(data_source_network$from, data_source_network$to) %>% unique() %>% setdiff(c(targets_all,ligands_all)) %>% intersect(gr_network$from %>% unique()) %>% setdiff(c(data_source_network$from, data_source_network$to) %>% unique() %>% intersect(lr_network$to %>% unique())),annotation = "transcriptional regulator")
-#)
-#non_specific_annotation_tbl = tibble(gene = c(data_source_network$from, data_source_network$to) %>% unique() %>% setdiff(specific_annotation_tbl$gene), annotation = "signaling mediator")
-#
-#if(write_output){
-#bind_rows(specific_annotation_tbl,non_specific_annotation_tbl) %>% write_tsv(paste0(output_path,"annotation_table.txt"))
-#}
-```
-
 ## SessionInfo
 
 ``` r
@@ -947,41 +788,39 @@ sessionInfo()
     ## [22] nvimcom_0.9-82    
     ## 
     ## loaded via a namespace (and not attached):
-    ##   [1] colorspace_1.4-1     ggsignif_0.6.0       ellipsis_0.3.0      
-    ##   [4] class_7.3-15         htmlTable_1.13.1     base64enc_0.1-3     
-    ##   [7] rstudioapi_0.10      fansi_0.4.0          prodlim_2019.11.13  
-    ##  [10] lubridate_1.7.4      xml2_1.2.2           codetools_0.2-16    
-    ##  [13] splines_3.6.1        knitr_1.24           zeallot_0.1.0       
-    ##  [16] Formula_1.2-3        jsonlite_1.6         pROC_1.16.1         
-    ##  [19] caret_6.0-85         broom_0.5.2          Rttf2pt1_1.3.8      
-    ##  [22] cluster_2.1.0        compiler_3.6.1       httr_1.4.1          
-    ##  [25] backports_1.1.4      assertthat_0.2.1     Matrix_1.2-17       
-    ##  [28] lazyeval_0.2.2       cli_1.1.0            acepack_1.4.1       
-    ##  [31] visNetwork_2.0.9     htmltools_0.3.6      tools_3.6.1         
-    ##  [34] igraph_1.2.4.1       gtable_0.3.0         glue_1.3.1          
-    ##  [37] reshape2_1.4.3       rsvg_1.3             V8_3.0.2            
-    ##  [40] fastmatch_1.1-0      cellranger_1.1.0     vctrs_0.2.0         
-    ##  [43] gdata_2.18.0         nlme_3.1-141         extrafontdb_1.0     
-    ##  [46] DiagrammeRsvg_0.1    iterators_1.0.12     timeDate_3043.102   
-    ##  [49] gower_0.2.1          xfun_0.9             rvest_0.3.4         
-    ##  [52] lifecycle_0.1.0      gtools_3.8.1         MASS_7.3-51.4       
-    ##  [55] scales_1.0.0         ipred_0.9-9          hms_0.5.1           
-    ##  [58] parallel_3.6.1       curl_4.2             yaml_2.2.0          
-    ##  [61] gridExtra_2.3        rpart_4.1-15         latticeExtra_0.6-28 
-    ##  [64] stringi_1.4.3        foreach_1.4.7        randomForest_4.6-14 
-    ##  [67] checkmate_1.9.4      caTools_1.17.1.2     BiocParallel_1.18.1 
-    ##  [70] lava_1.6.6           rlang_0.4.0          pkgconfig_2.0.3     
-    ##  [73] bitops_1.0-6         evaluate_0.14        lattice_0.20-38     
-    ##  [76] ROCR_1.0-7           labeling_0.3         recipes_0.1.9       
-    ##  [79] htmlwidgets_1.3      tidyselect_0.2.5     plyr_1.8.4          
-    ##  [82] R6_2.4.0             gplots_3.0.1.1       generics_0.0.2      
-    ##  [85] Hmisc_4.2-0          pillar_1.4.2         haven_2.1.1         
-    ##  [88] foreign_0.8-72       withr_2.1.2          survival_2.44-1.1   
-    ##  [91] nnet_7.3-12          modelr_0.1.5         crayon_1.3.4        
-    ##  [94] utf8_1.1.4           fdrtool_1.2.15       KernSmooth_2.23-16  
-    ##  [97] grid_3.6.1           readxl_1.3.1         data.table_1.12.8   
-    ## [100] ModelMetrics_1.2.2.1 digest_0.6.21        stats4_3.6.1        
-    ## [103] munsell_0.5.0
+    ##  [1] colorspace_1.4-1     ggsignif_0.6.0       ellipsis_0.3.0      
+    ##  [4] class_7.3-15         htmlTable_1.13.1     base64enc_0.1-3     
+    ##  [7] rstudioapi_0.10      fansi_0.4.0          prodlim_2019.11.13  
+    ## [10] lubridate_1.7.4      xml2_1.2.2           codetools_0.2-16    
+    ## [13] splines_3.6.1        knitr_1.24           zeallot_0.1.0       
+    ## [16] Formula_1.2-3        jsonlite_1.6         pROC_1.16.1         
+    ## [19] caret_6.0-85         broom_0.5.2          Rttf2pt1_1.3.8      
+    ## [22] cluster_2.1.0        compiler_3.6.1       httr_1.4.1          
+    ## [25] backports_1.1.4      assertthat_0.2.1     Matrix_1.2-17       
+    ## [28] lazyeval_0.2.2       cli_1.1.0            acepack_1.4.1       
+    ## [31] visNetwork_2.0.9     htmltools_0.3.6      tools_3.6.1         
+    ## [34] igraph_1.2.4.1       gtable_0.3.0         glue_1.3.1          
+    ## [37] reshape2_1.4.3       fastmatch_1.1-0      cellranger_1.1.0    
+    ## [40] vctrs_0.2.0          gdata_2.18.0         nlme_3.1-141        
+    ## [43] extrafontdb_1.0      iterators_1.0.12     timeDate_3043.102   
+    ## [46] gower_0.2.1          xfun_0.9             rvest_0.3.4         
+    ## [49] lifecycle_0.1.0      gtools_3.8.1         MASS_7.3-51.4       
+    ## [52] scales_1.0.0         ipred_0.9-9          hms_0.5.1           
+    ## [55] parallel_3.6.1       yaml_2.2.0           gridExtra_2.3       
+    ## [58] rpart_4.1-15         latticeExtra_0.6-28  stringi_1.4.3       
+    ## [61] foreach_1.4.7        randomForest_4.6-14  checkmate_1.9.4     
+    ## [64] caTools_1.17.1.2     BiocParallel_1.18.1  lava_1.6.6          
+    ## [67] rlang_0.4.0          pkgconfig_2.0.3      bitops_1.0-6        
+    ## [70] evaluate_0.14        lattice_0.20-38      ROCR_1.0-7          
+    ## [73] labeling_0.3         recipes_0.1.9        htmlwidgets_1.3     
+    ## [76] tidyselect_0.2.5     plyr_1.8.4           R6_2.4.0            
+    ## [79] gplots_3.0.1.1       generics_0.0.2       Hmisc_4.2-0         
+    ## [82] pillar_1.4.2         haven_2.1.1          foreign_0.8-72      
+    ## [85] withr_2.1.2          survival_2.44-1.1    nnet_7.3-12         
+    ## [88] modelr_0.1.5         crayon_1.3.4         utf8_1.1.4          
+    ## [91] fdrtool_1.2.15       KernSmooth_2.23-16   grid_3.6.1          
+    ## [94] readxl_1.3.1         data.table_1.12.8    ModelMetrics_1.2.2.1
+    ## [97] digest_0.6.21        stats4_3.6.1         munsell_0.5.0
 
 ``` r
 {                                                                                                                                                                                                           

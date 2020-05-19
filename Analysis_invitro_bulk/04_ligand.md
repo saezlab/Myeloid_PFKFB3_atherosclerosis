@@ -147,7 +147,7 @@ definition of this gene set depends on your research question and is a
 crucial step in the use of NicheNet. Because we here want to investigate
 how Macrophages regulate the expression of Fibroblasts pro-fibrotic
 signature, we will use the leading edge genes from the Matrisome gene
-sets enriched in this phenoty as targt genes for the analysis. And all
+sets enriched in this phenoty as target genes for the analysis. And all
 genes expressed in fibroblasts as background of
 genes.
 
@@ -160,14 +160,12 @@ set.seed(123)
 matrisome.res <- fgsea(pathways = matrisome, stats = eBay$t[,"Fib_PHD2"], nperm=10000)
 # Define the downstream analysis based on leading edge genes from matrisome
 geneset_oi <- unlist(matrisome.res[matrisome.res$padj<0.05, "leadingEdge"]) 
+names(geneset_oi) <- NULL
 
 head(geneset_oi)
 ```
 
-    ## leadingEdge1 leadingEdge2 leadingEdge3 leadingEdge4 leadingEdge5 
-    ##     "Col3a1"     "Col5a3"    "Col15a1"    "Col28a1"    "Col18a1" 
-    ## leadingEdge6 
-    ##    "Col27a1"
+    ## [1] "Col3a1"  "Col5a3"  "Col15a1" "Col28a1" "Col18a1" "Col27a1"
 
 ``` r
 background_expressed_genes = expressed_genes_receiver %>% .[. %in% rownames(ligand_target_matrix)]
@@ -176,6 +174,40 @@ head(background_expressed_genes)
 
     ## [1] "0610009O20Rik" "0610010F05Rik" "0610010K14Rik" "0610012G03Rik"
     ## [5] "0610030E20Rik" "0610037L13Rik"
+
+For the records, we show which genes we are trying to predict via ligand
+analysis. This accounts for a total of n=98 genes involved in
+    matrisome.
+
+``` r
+length(geneset_oi)
+```
+
+    ## [1] 98
+
+``` r
+print(geneset_oi)
+```
+
+    ##  [1] "Col3a1"  "Col5a3"  "Col15a1" "Col28a1" "Col18a1" "Col27a1" "Col5a1" 
+    ##  [8] "Col1a1"  "Col5a2"  "Tinagl1" "Fbln5"   "Wisp2"   "Cyr61"   "Smoc2"  
+    ## [15] "Thbs1"   "Nov"     "Igfbp4"  "Bmper"   "Mfge8"   "Mgp"     "Npnt"   
+    ## [22] "Ltbp1"   "Emilin2" "Ctgf"    "Lama5"   "Smoc1"   "Thbs2"   "Aebp1"  
+    ## [29] "Slit2"   "Igfbp6"  "Pcolce"  "Plxnc1"  "Sema7a"  "Sdc3"    "Clec4a1"
+    ## [36] "Plxdc1"  "Clec12a" "Clec5a"  "Sema4d"  "Clec4d"  "Clec7a"  "Sema3c" 
+    ## [43] "Clec4e"  "C1qa"    "Clec4n"  "Ovgp1"   "C1qc"    "Clec4a2" "C1qb"   
+    ## [50] "Clec4a3" "Plxna2"  "Anxa2"   "Sema3a"  "Plxnd1"  "Clec2h"  "Sema4a" 
+    ## [57] "Fcna"    "C1qtnf6" "Anxa6"   "Clec10a" "Clec9a"  "Sema4c"  "Igf1"   
+    ## [64] "Angptl4" "Cxcl14"  "Ccl3"    "Igf2"    "Cx3cl1"  "Pdgfb"   "Tgfb1"  
+    ## [71] "Ccl2"    "Tnf"     "Ccl4"    "Ccl12"   "Ccl11"   "Il16"    "Ccl5"   
+    ## [78] "Ebi3"    "Cxcl10"  "Il1rn"   "S100a1"  "Pf4"     "Ccl9"    "Ccl7"   
+    ## [85] "Cxcl2"   "Ccl6"    "Cxcl12"  "Tnfsf14" "Ccl17"   "Fstl1"   "Fgf13"  
+    ## [92] "Fgf11"   "Tnfsf13" "S100a8"  "S100a13" "S100a16" "Clcf1"   "Osm"
+
+``` r
+# Save them
+cat(geneset_oi, sep="\n", file=paste0(DATADIR, "/geneset_oi.txt"))
+```
 
 ## Step 3: Define a set of potential ligands
 
@@ -194,10 +226,9 @@ sources.
 # lr_network = readRDS(url("https://zenodo.org/record/3260758/files/lr_network.rds"))
 lr_network = readRDS(("../data/nichenetr/lr_network.rds"))
 # Transform to mouse
-lr_network = lr_network %>% mutate(from = convert_human_to_mouse_symbols(from), to = convert_human_to_mouse_symbols(to)) %>% drop_na()
-
-# If wanted, users can remove ligand-receptor interactions that were predicted based on protein-protein interactions and only keep ligand-receptor interactions that are described in curated databases. To do this: uncomment following line of code:
-# lr_network = lr_network %>% filter(database != "ppi_prediction_go" & database != "ppi_prediction")
+lr_network = lr_network %>% mutate(from = convert_human_to_mouse_symbols(from), 
+                   to = convert_human_to_mouse_symbols(to)) %>% 
+drop_na()
 
 ligands = lr_network %>% pull(from) %>% unique()
 expressed_ligands = intersect(ligands,expressed_genes_sender)
@@ -222,6 +253,43 @@ head(lr_network_expressed)
     ## 4 Hgf     Met       kegg_cytokines kegg    
     ## 5 Tnfsf12 Tnfrsf12a kegg_cytokines kegg    
     ## 6 Itgb1   Vcam1     kegg_cams      kegg
+
+For the records, we show how many ligands (n=25) are considered for the
+analysis. Since this is a short list, we show them all. We also show how
+many receptors are considered as well.
+
+``` r
+## LIGANDS
+print(expressed_ligands)
+```
+
+    ##  [1] "Il15"    "Pdgfa"   "Plekho2" "Hgf"     "Kitl"    "Tnfsf12" "Itgb1"  
+    ##  [8] "Itga9"   "Alcam"   "Spp1"    "Calm1"   "Anxa1"   "Col18a1" "Gpi1"   
+    ## [15] "Mmp13"   "Pf4"     "Plau"    "Rtn4"    "Tfpi"    "Glg1"    "Crlf2"  
+    ## [22] "Mif"     "Flrt2"   "Pcdh7"   "Nptn"
+
+``` r
+cat(paste0("Expressed ligands accounts for n=",length(expressed_ligands)," genes","\n"),
+    file=stdout())
+```
+
+    ## Expressed ligands accounts for n=25 genes
+
+``` r
+# Save them for the records
+cat(expressed_ligands, sep="\n", file=paste0(DATADIR, "/expressed_ligands.txt"))
+
+## RECEPTORS
+cat(paste0("Expressed receptors accounts for n=",length(expressed_receptors)," genes","\n"),
+    file=stdout())
+```
+
+    ## Expressed receptors accounts for n=238 genes
+
+``` r
+# Save them for the records
+cat(expressed_receptors, sep="\n", file=paste0(DATADIR, "/expressed_receptors.txt"))
+```
 
 This ligand-receptor network contains the expressed ligand-receptor
 interactions. As potentially active ligands for the NicheNet analysis,
@@ -251,8 +319,8 @@ ligand_activities = predict_ligand_activities(geneset = geneset_oi,
 ```
 
 Now, we want to rank the ligands based on their ligand activity. In
-Nichnet validation, they showed that the pearson correlation coefficient
-(PCC) between a ligand’s target predictions and the observed
+Nichenet validation, they showed that the pearson correlation
+coefficient (PCC) between a ligand’s target predictions and the observed
 transcriptional response was the most informative measure to define
 ligand activity. Therefore, we will rank the ligands based on their
 pearson correlation coefficient. This allows us to prioritize
@@ -277,12 +345,19 @@ ligand_activities %>% arrange(-pearson)
     ## 10 Col18a1     0.612 0.0175  0.0409
     ## # … with 12 more rows
 
+Previous table reports that few top ligands are good predictors of the
+gene set of interest. Then the PCC drops drastically. Becasue of this,
+we will choose just the top
+10.
+
 ``` r
-best_upstream_ligands = ligand_activities %>% top_n(20, pearson) %>% arrange(-pearson) %>% pull(test_ligand)
-head(best_upstream_ligands)
+best_upstream_ligands = ligand_activities %>% top_n(10, pearson) %>% arrange(-pearson) %>% pull(test_ligand)
+# We show all of them
+print(best_upstream_ligands)
 ```
 
-    ## [1] "Spp1"    "Anxa1"   "Tnfsf12" "Il15"    "Tfpi"    "Pf4"
+    ##  [1] "Spp1"    "Anxa1"   "Tnfsf12" "Il15"    "Tfpi"    "Pf4"     "Mmp13"  
+    ##  [8] "Pdgfa"   "Calm1"   "Col18a1"
 
 We see here that the performance metrics indicate that the 20 top-ranked
 ligands can predict the Fibroblast signature reasonably, this implies
@@ -307,24 +382,24 @@ p_hist_lig_activity = ggplot(ligand_activities, aes(x=pearson)) +
   geom_histogram(color="black", fill="darkorange")  + 
   # geom_density(alpha=.1, fill="orange") +
   geom_vline(aes(xintercept=min(ligand_activities %>% 
-                top_n(20, pearson) %>% pull(pearson))), 
+                top_n(10, pearson) %>% pull(pearson))), 
          color="red", linetype="dashed", size=1) + 
   labs(x="ligand activity (PCC)", y = "# ligands") +
   theme_classic()
 p_hist_lig_activity
 ```
 
-![](./04_ligand_output//figures/unnamed-chunk-10-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-13-1.png)<!-- -->
 
 ## Step 5: Infer target genes of top-ranked ligands and visualize in a heatmap
 
-Now we will loon into the regulatory potential scores between ligands
+Now we will look into the regulatory potential scores between ligands
 and target genes of interest. In this case, we will look at links
 between top-ranked regulating ligands and genes. In the ligand-target
 heatmaps, we show here regulatory potential scores for interactions
 between the 20 top-ranked ligands and following target genes: genes that
 belong to the gene set of interest and to the 250 most strongly
-predicted targets of at least one of the 20 top-ranked ligands (the top
+predicted targets of at least one of the 10 top-ranked ligands (the top
 250 targets according to the general prior model, so not the top 250
 targets for this dataset). Consequently, genes of your gene set that are
 not a top target gene of one of the prioritized ligands, will not be
@@ -341,7 +416,7 @@ bind_rows()
 nrow(active_ligand_target_links_df)
 ```
 
-    ## [1] 83
+    ## [1] 51
 
 ``` r
 head(active_ligand_target_links_df)
@@ -360,7 +435,7 @@ head(active_ligand_target_links_df)
 For visualization purposes, we adapted the ligand-target regulatory
 potential matrix as follows. Regulatory potential scores were set as 0
 if their score was below a predefined threshold, which was here the 0.25
-quantile of scores of interactions between the 20 top-ranked ligands and
+quantile of scores of interactions between the 10 top-ranked ligands and
 each of their respective top targets (see the ligand-target network
 defined in the data frame).
 
@@ -375,7 +450,7 @@ active_ligand_target_links = prepare_ligand_target_visualization(ligand_target_d
 nrow(active_ligand_target_links_df)
 ```
 
-    ## [1] 83
+    ## [1] 51
 
 ``` r
 head(active_ligand_target_links_df)
@@ -421,19 +496,20 @@ order_ligands = intersect(best_upstream_ligands, colnames(active_ligand_target_l
 order_targets = active_ligand_target_links_df$target %>% unique()
 vis_ligand_target = active_ligand_target_links[order_targets,order_ligands] %>% t()
 
-p_ligand_target_network = vis_ligand_target %>% make_heatmap_ggplot("Prioritized Macrophage-ligands",
-                                    "Responsive target genes from co-cultured Fibroblast", 
-                                    color = "purple",legend_position = "top", x_axis_position = "top",
-                                    legend_title = "Regulatory potential\n") + 
+p_ligand_target_network = vis_ligand_target %>% 
+    make_heatmap_ggplot("Prioritized Macrophage-ligands",
+                "Responsive target genes from co-cultured Fibroblast", 
+                color = "purple",legend_position = "top", x_axis_position = "top",
+                legend_title = "Regulatory potential\n") + 
 scale_fill_gradient2(low = "whitesmoke",  high = "purple", breaks = c(0,0.005,0.01)) + # theme(axis.text.x = element_text(face = "italic")) +
-theme(legend.key.width = unit(1.0, "cm"),
-      legend.text = element_text(family=fontTXT, size=10),
-      legend.title = element_text(family=fontTXT, size=13))
+theme(legend.key.width = unit(1.2, "cm"),
+      legend.text = element_text(family=fontTXT, size=13),
+      legend.title = element_text(family=fontTXT, size=14))
 
 p_ligand_target_network
 ```
 
-![](./04_ligand_output//figures/unnamed-chunk-13-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-16-1.png)<!-- -->
 
 ## Follow-up analysis 1: Ligand-receptor network inference for top-ranked ligands
 
@@ -475,14 +551,15 @@ interactions
 
 ``` r
 vis_ligand_receptor_network = lr_network_top_matrix[order_receptors, order_ligands_receptor]
-p_ligand_receptor_network = vis_ligand_receptor_network %>% t() %>% make_heatmap_ggplot("Prioritized PHD2-KO Macrophage ligands",
-                                            "Receptors expressed by Fibroblasts", 
-                                            color = "mediumvioletred", x_axis_position = "top",
-                                            legend_title = "Prior interaction potential")
+p_ligand_receptor_network = vis_ligand_receptor_network %>% t() %>% 
+    make_heatmap_ggplot("Prioritized PHD2-KO Macrophage ligands",
+            "Receptors expressed by Fibroblasts", 
+            color = "mediumvioletred", x_axis_position = "top",
+            legend_title = "Prior interaction potential")
 p_ligand_receptor_network
 ```
 
-![](./04_ligand_output//figures/unnamed-chunk-15-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-18-1.png)<!-- -->
 
 ## Follow-up analysis 2: Visualize expression of top-predicted ligands and their target genes in a combined heatmap
 
@@ -517,14 +594,15 @@ p_ligand_pearson = vis_ligand_pearson %>%
   make_heatmap_ggplot("Prioritized Macrophage-ligands","Ligand activity",
   color = "darkorange",legend_position = "top", x_axis_position = "top",
   legend_title = "Pearson Correlation Coef. \n(prediction ability)  ") +
-  theme(legend.key.width = unit(1.0, "cm"),
-    legend.text = element_text(family = fontTXT, size=10),
+#  scale_fill_gradient2(breaks = c(0, 0.05,0.10,0.15)) + # theme(axis.text.x = element_text(face = "italic")) +
+  theme(legend.key.width = unit(1.2, "cm"),
+    legend.text = element_text(family = fontTXT, size=13),
     legend.title = element_text(family = fontTXT, size=14))
 
 p_ligand_pearson
 ```
 
-![](./04_ligand_output//figures/unnamed-chunk-18-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-21-1.png)<!-- -->
 
 #### Prepare expression of ligands (sender: macrophages)
 
@@ -545,14 +623,14 @@ p_ligand_Mac_scaled_expression = vis_ligand_Mac_expression  %>%
 make_threecolor_heatmap_ggplot("Ligands","Sender (Macrophage)",
     low_color = color[1],mid_color = color[50], mid = 0.5,
     high_color = color[100], legend_position = "top", x_axis_position = "top" ,
-    legend_title = "Scaled expression\n(averaged over bulk cells)") +
-theme(legend.key.width = unit(1.0, "cm"),
-    legend.text = element_text(family = fontTXT),
-    legend.title = element_text(family = fontTXT))
+    legend_title = "Scaled expression\n") +
+theme(legend.key.width = unit(1.2, "cm"),
+    legend.text = element_text(family = fontTXT, size=13),
+    legend.title = element_text(family = fontTXT, size=14))
 p_ligand_Mac_scaled_expression
 ```
 
-![](./04_ligand_output//figures/unnamed-chunk-20-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-23-1.png)<!-- -->
 
 #### Prepare expression of target genes (receiver: fibroblasts)
 
@@ -577,7 +655,7 @@ theme(legend.key.width = unit(1.0, "cm"),
 p_target_fib_scaled_expression
 ```
 
-![](./04_ligand_output//figures/unnamed-chunk-22-1.png)<!-- -->
+![](./04_ligand_output//figures/unnamed-chunk-25-1.png)<!-- -->
 
 #### Combine the different heatmaps in one overview figure
 
@@ -617,14 +695,14 @@ figures_without_legend = plot_grid(
         plot.margin = unit(c(0,0,0,0), "cm")) + xlab(""), 
   align = "hv",
   nrow = 2,  rel_widths = c(ncol(vis_ligand_pearson)+ 2.0, ncol(vis_ligand_Mac_expression) -0, ncol(vis_ligand_target)) + 2,
-  rel_heights = c(nrow(vis_ligand_pearson), nrow(vis_target_fib_expression_scaled) + 3)) 
+  rel_heights = c(nrow(vis_ligand_pearson), nrow(vis_target_fib_expression_scaled) + 1.50)) 
 
 legends = plot_grid(
   as_ggplot(get_legend(p_ligand_pearson)),
   as_ggplot(get_legend(p_ligand_target_network)),
   as_ggplot(get_legend(p_ligand_Mac_scaled_expression)),
 #  as_ggplot(get_legend(p_target_fib_scaled_expression)), # We remove it because it is the same as above
-  nrow = 1,
+  nrow = 1, rel_widths = c(1.1,1,1),
   align = "h")
 
 plot_grid(figures_without_legend, 
@@ -669,19 +747,19 @@ cross-validation rounds)?
 target_prediction_performances_cv$auroc %>% mean()
 ```
 
-    ## [1] 0.7507761
+    ## [1] 0.7149865
 
 ``` r
 target_prediction_performances_cv$aupr %>% mean()
 ```
 
-    ## [1] 0.09091774
+    ## [1] 0.07634632
 
 ``` r
 target_prediction_performances_cv$pearson %>% mean()
 ```
 
-    ## [1] 0.1901776
+    ## [1] 0.1607228
 
 Evaluate now whether genes belonging to the gene set are more likely to
 be top-predicted. We will look at the top 5% of predicted targets
@@ -701,7 +779,7 @@ targets?
 target_prediction_performances_discrete_cv %>% filter(true_target) %>% .$fraction_positive_predicted %>% mean()
 ```
 
-    ## [1] 0.2634409
+    ## [1] 0.2258065
 
 What is the fraction of non-collagen genes that belongs to the top 5%
 predicted
@@ -711,7 +789,7 @@ targets?
 target_prediction_performances_discrete_cv %>% filter(!true_target) %>% .$fraction_positive_predicted %>% mean()
 ```
 
-    ## [1] 0.04874957
+    ## [1] 0.0493258
 
 We see that the signature is enriched in the top-predicted target genes.
 To test this, we will now apply a Fisher’s exact test for every
@@ -724,7 +802,7 @@ target_prediction_performances_discrete_fisher = gs_gene_predictions_top20_list 
 target_prediction_performances_discrete_fisher %>% unlist() %>% mean()
 ```
 
-    ## [1] 6.869154e-11
+    ## [1] 1.891916e-08
 
 Finally, we will look at which genes from the signature are
 well-predicted in every cross-validation round.
@@ -737,20 +815,20 @@ top_predicted_genes = seq(length(gs_gene_predictions_top20_list)) %>%
 top_predicted_genes %>% filter(true_target)
 ```
 
-    ## # A tibble: 28 x 4
+    ## # A tibble: 27 x 4
     ##    gene   true_target predicted_top_target_roun… predicted_top_target_roun…
     ##    <chr>  <lgl>       <lgl>                      <lgl>                     
     ##  1 Ccl11  TRUE        TRUE                       TRUE                      
     ##  2 Ccl3   TRUE        TRUE                       TRUE                      
     ##  3 Col3a1 TRUE        TRUE                       TRUE                      
     ##  4 Cxcl2  TRUE        TRUE                       TRUE                      
-    ##  5 Ccl4   TRUE        TRUE                       TRUE                      
-    ##  6 Ccl2   TRUE        TRUE                       TRUE                      
+    ##  5 Ccl2   TRUE        TRUE                       TRUE                      
+    ##  6 Ccl4   TRUE        TRUE                       TRUE                      
     ##  7 Tnf    TRUE        TRUE                       TRUE                      
-    ##  8 Cxcl10 TRUE        TRUE                       TRUE                      
-    ##  9 Ccl12  TRUE        TRUE                       TRUE                      
-    ## 10 Plxnc1 TRUE        TRUE                       TRUE                      
-    ## # … with 18 more rows
+    ##  8 Ccl12  TRUE        TRUE                       NA                        
+    ##  9 Il1rn  TRUE        TRUE                       TRUE                      
+    ## 10 C1qb   TRUE        TRUE                       TRUE                      
+    ## # … with 17 more rows
 
 ## SessionInfo
 

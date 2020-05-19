@@ -121,7 +121,7 @@ length(expressed_genes_receiver)
 As gene set of interest, we consider the genes of which the expression is possibly affected due to communication with other cells. 
 The definition of this gene set depends on your research question and is a crucial step in the use of NicheNet. 
 Because we here want to investigate how Macrophages regulate the expression of Fibroblasts pro-fibrotic signature, 
-we will use the leading edge genes from the Matrisome gene sets enriched in this phenoty as targt genes for the analysis.
+we will use the leading edge genes from the Matrisome gene sets enriched in this phenoty as target genes for the analysis.
 And all genes expressed in fibroblasts as background of genes. 
 
 ```{r}
@@ -133,6 +133,7 @@ set.seed(123)
 matrisome.res <- fgsea(pathways = matrisome, stats = eBay$t[,"Fib_PHD2"], nperm=10000)
 # Define the downstream analysis based on leading edge genes from matrisome
 geneset_oi <- unlist(matrisome.res[matrisome.res$padj<0.05, "leadingEdge"]) 
+names(geneset_oi) <- NULL
 
 head(geneset_oi)
 
@@ -140,21 +141,30 @@ background_expressed_genes = expressed_genes_receiver %>% .[. %in% rownames(liga
 head(background_expressed_genes)
 ```
 
+For the records, we show which genes we are trying to predict via ligand analysis. This accounts for a
+total of n=`r length(geneset_oi)` genes involved in matrisome.
+```{r}
+length(geneset_oi)
+print(geneset_oi)
+# Save them
+cat(geneset_oi, sep="\n", file=paste0(DATADIR, "/geneset_oi.txt"))
+```
+
 ## Step 3: Define a set of potential ligands
 
 As potentially active ligands, we will use ligands that are 
 
 1. Expressed by Macrophages and up-regulated upon PHD2 knock-out perturbation.
-2. can bind a (putative) receptor expressed by malignant cells. Putative ligand-receptor links were gathered from NicheNet's ligand-receptor data sources.
+2. can bind a (putative) receptor expressed by malignant cells. Putative ligand-receptor links 
+   were gathered from NicheNet's ligand-receptor data sources.
 
 ```{r}
 # lr_network = readRDS(url("https://zenodo.org/record/3260758/files/lr_network.rds"))
 lr_network = readRDS(("../data/nichenetr/lr_network.rds"))
 # Transform to mouse
-lr_network = lr_network %>% mutate(from = convert_human_to_mouse_symbols(from), to = convert_human_to_mouse_symbols(to)) %>% drop_na()
-
-# If wanted, users can remove ligand-receptor interactions that were predicted based on protein-protein interactions and only keep ligand-receptor interactions that are described in curated databases. To do this: uncomment following line of code:
-# lr_network = lr_network %>% filter(database != "ppi_prediction_go" & database != "ppi_prediction")
+lr_network = lr_network %>% mutate(from = convert_human_to_mouse_symbols(from), 
+				   to = convert_human_to_mouse_symbols(to)) %>% 
+drop_na()
 
 ligands = lr_network %>% pull(from) %>% unique()
 expressed_ligands = intersect(ligands,expressed_genes_sender)
@@ -170,6 +180,22 @@ lr_network_expressed = lr_network %>% filter(from %in% expressed_ligands &
 head(lr_network_expressed)
 ```
 
+For the records, we show how many ligands (n=`r length(expressed_ligands)`) are considered for the analysis. 
+Since this is a short list, we show them all. We also show how many receptors are considered as well.
+```{r}
+## LIGANDS
+print(expressed_ligands)
+cat(paste0("Expressed ligands accounts for n=",length(expressed_ligands)," genes","\n"),
+    file=stdout())
+# Save them for the records
+cat(expressed_ligands, sep="\n", file=paste0(DATADIR, "/expressed_ligands.txt"))
+
+## RECEPTORS
+cat(paste0("Expressed receptors accounts for n=",length(expressed_receptors)," genes","\n"),
+    file=stdout())
+# Save them for the records
+cat(expressed_receptors, sep="\n", file=paste0(DATADIR, "/expressed_receptors.txt"))
+```
 
 This ligand-receptor network contains the expressed ligand-receptor interactions. 
 As potentially active ligands for the NicheNet analysis, we will consider the ligands from 
@@ -195,13 +221,22 @@ ligand_activities = predict_ligand_activities(geneset = geneset_oi,
 					      potential_ligands = potential_ligands)
 ```
 
-Now, we want to rank the ligands based on their ligand activity. In Nichnet validation, they showed that the pearson correlation coefficient (PCC) between a ligand's target predictions and the observed transcriptional response was the most informative measure to define ligand activity. Therefore, we will rank the ligands based on their pearson correlation coefficient. 
+Now, we want to rank the ligands based on their ligand activity. In Nichenet validation, they showed that 
+the pearson correlation coefficient (PCC) between a ligand's target predictions and the observed transcriptional 
+response was the most informative measure to define ligand activity. Therefore, we will rank the ligands based on 
+their pearson correlation coefficient. 
 This allows us to prioritize Macrophage-released ligands by ranking that statistic.
 
 ```{r}
 ligand_activities %>% arrange(-pearson) 
-best_upstream_ligands = ligand_activities %>% top_n(20, pearson) %>% arrange(-pearson) %>% pull(test_ligand)
-head(best_upstream_ligands)
+```
+
+Previous table reports that few top ligands are good predictors of the gene set of interest. Then the 
+PCC drops drastically. Becasue of this, we will choose just the top 10.
+```{r}
+best_upstream_ligands = ligand_activities %>% top_n(10, pearson) %>% arrange(-pearson) %>% pull(test_ligand)
+# We show all of them
+print(best_upstream_ligands)
 ```
 
 We see here that the performance metrics indicate that the 20 top-ranked ligands can predict the Fibroblast signature reasonably, 
@@ -221,7 +256,7 @@ p_hist_lig_activity = ggplot(ligand_activities, aes(x=pearson)) +
   geom_histogram(color="black", fill="darkorange")  + 
   # geom_density(alpha=.1, fill="orange") +
   geom_vline(aes(xintercept=min(ligand_activities %>% 
-				top_n(20, pearson) %>% pull(pearson))), 
+				top_n(10, pearson) %>% pull(pearson))), 
 	     color="red", linetype="dashed", size=1) + 
   labs(x="ligand activity (PCC)", y = "# ligands") +
   theme_classic()
@@ -231,11 +266,11 @@ p_hist_lig_activity
 
 ## Step 5: Infer target genes of top-ranked ligands and visualize in a heatmap
 
-Now we will loon into the regulatory potential scores between ligands and target genes of interest. 
+Now we will look into the regulatory potential scores between ligands and target genes of interest. 
 In this case, we will look at links between top-ranked regulating ligands and  genes. In the ligand-target heatmaps, 
 we show here regulatory potential scores for interactions between the 20 top-ranked ligands and following 
 target genes: genes that belong to the gene set of interest and to the 250 most strongly predicted targets of at least 
-one of the 20 top-ranked ligands (the top 250 targets according to the general prior model, so not the top 250 targets 
+one of the 10 top-ranked ligands (the top 250 targets according to the general prior model, so not the top 250 targets 
 for this dataset). Consequently, genes of your gene set that are not a top target gene of one of the prioritized ligands, 
 will not be shown on the heatmap.
 
@@ -253,7 +288,7 @@ head(active_ligand_target_links_df)
 
 For visualization purposes, we adapted the ligand-target regulatory potential matrix as follows. Regulatory potential 
 scores were set as 0 if their score was below a predefined threshold, which was here the 0.25 quantile of scores of 
-interactions between the 20 top-ranked ligands and each of their respective top targets (see the ligand-target network 
+interactions between the 10 top-ranked ligands and each of their respective top targets (see the ligand-target network 
 defined in the data frame).
 
 ```{r}
@@ -293,14 +328,15 @@ order_ligands = intersect(best_upstream_ligands, colnames(active_ligand_target_l
 order_targets = active_ligand_target_links_df$target %>% unique()
 vis_ligand_target = active_ligand_target_links[order_targets,order_ligands] %>% t()
 
-p_ligand_target_network = vis_ligand_target %>% make_heatmap_ggplot("Prioritized Macrophage-ligands",
-								    "Responsive target genes from co-cultured Fibroblast", 
-								    color = "purple",legend_position = "top", x_axis_position = "top",
-								    legend_title = "Regulatory potential\n") + 
+p_ligand_target_network = vis_ligand_target %>% 
+	make_heatmap_ggplot("Prioritized Macrophage-ligands",
+			    "Responsive target genes from co-cultured Fibroblast", 
+			    color = "purple",legend_position = "top", x_axis_position = "top",
+			    legend_title = "Regulatory potential\n") + 
 scale_fill_gradient2(low = "whitesmoke",  high = "purple", breaks = c(0,0.005,0.01)) + # theme(axis.text.x = element_text(face = "italic")) +
-theme(legend.key.width = unit(1.0, "cm"),
-      legend.text = element_text(family=fontTXT, size=10),
-      legend.title = element_text(family=fontTXT, size=13))
+theme(legend.key.width = unit(1.2, "cm"),
+      legend.text = element_text(family=fontTXT, size=13),
+      legend.title = element_text(family=fontTXT, size=14))
 
 p_ligand_target_network
 
@@ -345,10 +381,11 @@ Show a heatmap of the ligand-receptor interactions
 
 ```{r, fig.width=9, fig.height=6}
 vis_ligand_receptor_network = lr_network_top_matrix[order_receptors, order_ligands_receptor]
-p_ligand_receptor_network = vis_ligand_receptor_network %>% t() %>% make_heatmap_ggplot("Prioritized PHD2-KO Macrophage ligands",
-											"Receptors expressed by Fibroblasts", 
-											color = "mediumvioletred", x_axis_position = "top",
-											legend_title = "Prior interaction potential")
+p_ligand_receptor_network = vis_ligand_receptor_network %>% t() %>% 
+	make_heatmap_ggplot("Prioritized PHD2-KO Macrophage ligands",
+			"Receptors expressed by Fibroblasts", 
+			color = "mediumvioletred", x_axis_position = "top",
+			legend_title = "Prior interaction potential")
 p_ligand_receptor_network
 
 ```
@@ -383,8 +420,9 @@ p_ligand_pearson = vis_ligand_pearson %>%
   make_heatmap_ggplot("Prioritized Macrophage-ligands","Ligand activity",
   color = "darkorange",legend_position = "top", x_axis_position = "top",
   legend_title = "Pearson Correlation Coef. \n(prediction ability)  ") +
-  theme(legend.key.width = unit(1.0, "cm"),
-	legend.text = element_text(family = fontTXT, size=10),
+#  scale_fill_gradient2(breaks = c(0, 0.05,0.10,0.15)) + # theme(axis.text.x = element_text(face = "italic")) +
+  theme(legend.key.width = unit(1.2, "cm"),
+	legend.text = element_text(family = fontTXT, size=13),
 	legend.title = element_text(family = fontTXT, size=14))
 
 p_ligand_pearson
@@ -409,10 +447,10 @@ p_ligand_Mac_scaled_expression = vis_ligand_Mac_expression  %>%
 make_threecolor_heatmap_ggplot("Ligands","Sender (Macrophage)",
     low_color = color[1],mid_color = color[50], mid = 0.5,
     high_color = color[100], legend_position = "top", x_axis_position = "top" ,
-    legend_title = "Scaled expression\n(averaged over bulk cells)") +
-theme(legend.key.width = unit(1.0, "cm"),
-	legend.text = element_text(family = fontTXT),
-	legend.title = element_text(family = fontTXT))
+    legend_title = "Scaled expression\n") +
+theme(legend.key.width = unit(1.2, "cm"),
+	legend.text = element_text(family = fontTXT, size=13),
+	legend.title = element_text(family = fontTXT, size=14))
 p_ligand_Mac_scaled_expression
 ```
 
@@ -479,14 +517,14 @@ figures_without_legend = plot_grid(
 		plot.margin = unit(c(0,0,0,0), "cm")) + xlab(""), 
   align = "hv",
   nrow = 2,  rel_widths = c(ncol(vis_ligand_pearson)+ 2.0, ncol(vis_ligand_Mac_expression) -0, ncol(vis_ligand_target)) + 2,
-  rel_heights = c(nrow(vis_ligand_pearson), nrow(vis_target_fib_expression_scaled) + 3)) 
+  rel_heights = c(nrow(vis_ligand_pearson), nrow(vis_target_fib_expression_scaled) + 1.50)) 
 
 legends = plot_grid(
   as_ggplot(get_legend(p_ligand_pearson)),
   as_ggplot(get_legend(p_ligand_target_network)),
   as_ggplot(get_legend(p_ligand_Mac_scaled_expression)),
 #  as_ggplot(get_legend(p_target_fib_scaled_expression)), # We remove it because it is the same as above
-  nrow = 1,
+  nrow = 1, rel_widths = c(1.1,1,1),
   align = "h")
 
 plot_grid(figures_without_legend, 

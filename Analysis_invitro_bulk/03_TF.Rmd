@@ -133,6 +133,12 @@ MC_PHD2cKO_Hif1a <- topTable(TF.eBay, coef="MC_PHD2", number=Inf)["Hif1a",]
 We could conclude that Hif1a is `r 2^MC_PHD2cKO_Hif1a$logFC`-fold times more active 
 in macrophages upon PHD2-KO (FDR=`r MC_PHD2cKO_Hif1a$adj.P.Val`).
 
+## Save data
+```{r}
+saveRDS(TF, file=paste0(DATADIR,"/v.rds"))
+saveRDS(TF.eBay, file=paste0(DATADIR,"/eBay.rds"))
+```
+
 ## Session info
 
 ```{r}

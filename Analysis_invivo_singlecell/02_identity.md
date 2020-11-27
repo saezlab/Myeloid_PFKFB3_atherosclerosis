@@ -87,8 +87,7 @@ VlnPlot(S, features="Cd68")
 ```
 
 ![](./02_identity_output//figures/vln_cd68-1.png)<!-- --> Fibroblasts
-express Pdgfra and Smoc2, these are further characterized
-later.
+express Pdgfra and Smoc2, these are further characterized later.
 
 ``` r
 FeaturePlot(S, features = c("Pdgfra","Smoc2"), label = TRUE, label.size = 14)
@@ -165,12 +164,29 @@ DimPlot(S, reduction = "umap", cols = c("grey","red"), group.by="stim", label = 
 ![](./02_identity_output//figures/umap_condition-1.png)<!-- -->
 
 ``` r
-vln1 <- VlnPlot(S[,Idents(S) %in% c("Macrophage","Fibroblast") & S$stim=="PHD2cKO"], feature="Egln1") 
-vln2 <- VlnPlot(S[,Idents(S) %in% c("Macrophage","Fibroblast") & S$stim=="WT"], feature="Egln1") 
+vln1 <- VlnPlot(S[,S$stim=="PHD2cKO"], feature="Egln1") + 
+    ggtitle("PHD2cKO") + xlab("") + ylab("Egln1 Expression") + NoLegend()
+vln2 <- VlnPlot(S[,S$stim=="WT"], feature="Egln1") + 
+    ggtitle("WT") + xlab("") + ylab("Egln1 Expression") + NoLegend()
 CombinePlots(list(vln1,vln2), ncol = 1)
 ```
 
 ![](./02_identity_output//figures/vln_Egln1-1.png)<!-- -->
+
+``` r
+dplot1  <- DotPlot(S[,S$stim=="PHD2cKO"], feature="Egln1") + 
+    ggtitle("PHD2cKO") + xlab("") + ylab("") + 
+    theme(axis.text.x=element_text(angle=45, hjust=1)) +
+          coord_flip()
+
+dplot2 <- DotPlot(S[,S$stim=="WT"], feature="Egln1") + 
+    ggtitle("WT") + xlab("") + ylab("") + 
+    theme(axis.text.x=element_text(angle=45, hjust=1))+ 
+          coord_flip()
+CombinePlots(list(dplot1,dplot2), ncol = 1)
+```
+
+![](./02_identity_output//figures/dplot_Egln1-1.png)<!-- -->
 
 ## Save the Seurat Object
 
@@ -205,13 +221,13 @@ sessionInfo()
     ##  [8] datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] ComplexHeatmap_2.0.0 extrafont_0.17       optparse_1.6.2      
-    ##  [4] genesorteR_0.3.1     Matrix_1.2-17        ggrepel_0.8.1       
-    ##  [7] ggplot2_3.2.1        cowplot_1.0.0        dplyr_0.8.3         
-    ## [10] GSEABase_1.46.0      graph_1.62.0         annotate_1.62.0     
-    ## [13] XML_3.98-1.20        AnnotationDbi_1.46.1 IRanges_2.18.2      
-    ## [16] S4Vectors_0.22.1     Biobase_2.44.0       BiocGenerics_0.30.0 
-    ## [19] Seurat_3.1.0         rmarkdown_1.15       nvimcom_0.9-82      
+    ##  [1] rmarkdown_1.15       ComplexHeatmap_2.0.0 extrafont_0.17      
+    ##  [4] optparse_1.6.2       genesorteR_0.3.1     Matrix_1.2-17       
+    ##  [7] ggrepel_0.8.1        ggplot2_3.2.1        cowplot_1.0.0       
+    ## [10] dplyr_0.8.3          GSEABase_1.46.0      graph_1.62.0        
+    ## [13] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
+    ## [16] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
+    ## [19] BiocGenerics_0.30.0  Seurat_3.1.0         nvimcom_0.9-82      
     ## 
     ## loaded via a namespace (and not attached):
     ##   [1] Rtsne_0.15          colorspace_1.4-1    rjson_0.2.20       
@@ -243,8 +259,8 @@ sessionInfo()
     ##  [79] purrr_0.3.2         labeling_0.3        htmlwidgets_1.3    
     ##  [82] bit_1.1-14          tidyselect_0.2.5    RcppAnnoy_0.0.13   
     ##  [85] plyr_1.8.4          magrittr_1.5        R6_2.4.0           
-    ##  [88] gplots_3.0.1.1      DBI_1.0.0           withr_2.1.2        
-    ##  [91] pillar_1.4.2        fitdistrplus_1.0-14 survival_2.44-1.1  
+    ##  [88] gplots_3.0.1.1      DBI_1.0.0           pillar_1.4.2       
+    ##  [91] withr_2.1.2         fitdistrplus_1.0-14 survival_2.44-1.1  
     ##  [94] RCurl_1.95-4.12     tibble_2.1.3        future.apply_1.3.0 
     ##  [97] tsne_0.1-3          crayon_1.3.4        KernSmooth_2.23-16 
     ## [100] plotly_4.9.0        GetoptLong_0.1.7    data.table_1.12.8  

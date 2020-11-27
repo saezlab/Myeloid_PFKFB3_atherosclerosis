@@ -136,11 +136,27 @@ DimPlot(S, reduction = "umap", cols = c("grey","red"), group.by="stim", label = 
 	)
 ```
 
-```{r vln_Egln1, dpi=300}
-vln1 <- VlnPlot(S[,Idents(S) %in% c("Macrophage","Fibroblast") & S$stim=="PHD2cKO"], feature="Egln1") 
-vln2 <- VlnPlot(S[,Idents(S) %in% c("Macrophage","Fibroblast") & S$stim=="WT"], feature="Egln1") 
+```{r vln_Egln1, fig.width=8, fig.height=8, dpi=300}
+vln1 <- VlnPlot(S[,S$stim=="PHD2cKO"], feature="Egln1") + 
+	ggtitle("PHD2cKO") + xlab("") + ylab("Egln1 Expression") + NoLegend()
+vln2 <- VlnPlot(S[,S$stim=="WT"], feature="Egln1") + 
+	ggtitle("WT") + xlab("") + ylab("Egln1 Expression") + NoLegend()
 CombinePlots(list(vln1,vln2), ncol = 1)
 ```
+
+```{r dplot_Egln1, fig.width=8, fig.height=6, dpi=300}
+dplot1  <- DotPlot(S[,S$stim=="PHD2cKO"], feature="Egln1") + 
+	ggtitle("PHD2cKO") + xlab("") + ylab("") + 
+	theme(axis.text.x=element_text(angle=45, hjust=1)) +
+	      coord_flip()
+
+dplot2 <- DotPlot(S[,S$stim=="WT"], feature="Egln1") + 
+	ggtitle("WT") + xlab("") + ylab("") + 
+	theme(axis.text.x=element_text(angle=45, hjust=1))+ 
+	      coord_flip()
+CombinePlots(list(dplot1,dplot2), ncol = 1)
+```
+
 
 ## Save the Seurat Object
 ```{r seurat_obj}

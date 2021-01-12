@@ -97,7 +97,7 @@ for each cell type in the biological context. And assign cell type identities fo
 ren_id <- c("0"="Fibroblast",
 "1"="Macrophage",
 "2"="EC1",
-"3"="Neutrophil",
+"3"="Mixed_Neutrophil-DC-Monocytes",
 "4"="SMC",
 "5"="EC2",
 "6"="B-Cell",

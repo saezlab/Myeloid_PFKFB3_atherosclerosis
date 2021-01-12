@@ -43,6 +43,10 @@ source("../src/seurat_fx.R")
 source("../src/graphics.R")
 ```
 
+    ## Loading required package: extrafont
+
+    ## Registering fonts with R
+
 ## Load data
 
 Read the Seurat Object from first step.
@@ -74,6 +78,10 @@ VlnPlot(S, features="Ptprc")
 FeaturePlot(S, features = c("Col3a1", "Col14a1"), label = TRUE, label.size = 14)
 ```
 
+    ## Warning: Using `as.character()` on a quosure is deprecated as of rlang 0.3.0.
+    ## Please use `as_label()` or `as_name()` instead.
+    ## This warning is displayed once per session.
+
 ![](./02_identity_output//figures/umap_nonimmune-1.png)<!-- -->
 
 ``` r
@@ -87,7 +95,8 @@ VlnPlot(S, features="Cd68")
 ```
 
 ![](./02_identity_output//figures/vln_cd68-1.png)<!-- --> Fibroblasts
-express Pdgfra and Smoc2, these are further characterized later.
+express Pdgfra and Smoc2, these are further characterized
+later.
 
 ``` r
 FeaturePlot(S, features = c("Pdgfra","Smoc2"), label = TRUE, label.size = 14)
@@ -118,7 +127,7 @@ context. And assign cell type identities for each cluster.
 ren_id <- c("0"="Fibroblast",
 "1"="Macrophage",
 "2"="EC1",
-"3"="Neutrophil",
+"3"="Mixed_Neutrophil-DC-Monocytes",
 "4"="SMC",
 "5"="EC2",
 "6"="B-Cell",
@@ -133,6 +142,22 @@ hp <- DoHeatmap3(SeuratObject = S, GSC = getGmt("../data/markers/consensus_plaqu
        assay = "RNA", res="Idents", row_names_size=12, column_title_size=0, 
        fontfamily=fontTXT,
        show_hr=FALSE)
+```
+
+    ## Loading required package: grid
+
+    ## ========================================
+    ## ComplexHeatmap version 2.0.0
+    ## Bioconductor page: http://bioconductor.org/packages/ComplexHeatmap/
+    ## Github page: https://github.com/jokergoo/ComplexHeatmap
+    ## Documentation: http://jokergoo.github.io/ComplexHeatmap-reference
+    ## 
+    ## If you use it in published research, please cite:
+    ## Gu, Z. Complex heatmaps reveal patterns and correlations in multidimensional 
+    ##   genomic data. Bioinformatics 2016.
+    ## ========================================
+
+``` r
 draw(hp, heatmap_legend_side="right", annotation_legend_side="bottom")
 ```
 
@@ -221,13 +246,13 @@ sessionInfo()
     ##  [8] datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] rmarkdown_1.15       ComplexHeatmap_2.0.0 extrafont_0.17      
-    ##  [4] optparse_1.6.2       genesorteR_0.3.1     Matrix_1.2-17       
-    ##  [7] ggrepel_0.8.1        ggplot2_3.2.1        cowplot_1.0.0       
-    ## [10] dplyr_0.8.3          GSEABase_1.46.0      graph_1.62.0        
-    ## [13] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
-    ## [16] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
-    ## [19] BiocGenerics_0.30.0  Seurat_3.1.0         nvimcom_0.9-82      
+    ##  [1] ComplexHeatmap_2.0.0 extrafont_0.17       optparse_1.6.2      
+    ##  [4] genesorteR_0.3.1     Matrix_1.2-17        ggrepel_0.8.1       
+    ##  [7] ggplot2_3.2.1        cowplot_1.0.0        dplyr_0.8.3         
+    ## [10] GSEABase_1.46.0      graph_1.62.0         annotate_1.62.0     
+    ## [13] XML_3.98-1.20        AnnotationDbi_1.46.1 IRanges_2.18.2      
+    ## [16] S4Vectors_0.22.1     Biobase_2.44.0       BiocGenerics_0.30.0 
+    ## [19] Seurat_3.1.0         rmarkdown_1.15       nvimcom_0.9-82      
     ## 
     ## loaded via a namespace (and not attached):
     ##   [1] Rtsne_0.15          colorspace_1.4-1    rjson_0.2.20       
@@ -259,8 +284,8 @@ sessionInfo()
     ##  [79] purrr_0.3.2         labeling_0.3        htmlwidgets_1.3    
     ##  [82] bit_1.1-14          tidyselect_0.2.5    RcppAnnoy_0.0.13   
     ##  [85] plyr_1.8.4          magrittr_1.5        R6_2.4.0           
-    ##  [88] gplots_3.0.1.1      DBI_1.0.0           pillar_1.4.2       
-    ##  [91] withr_2.1.2         fitdistrplus_1.0-14 survival_2.44-1.1  
+    ##  [88] gplots_3.0.1.1      DBI_1.0.0           withr_2.1.2        
+    ##  [91] pillar_1.4.2        fitdistrplus_1.0-14 survival_2.44-1.1  
     ##  [94] RCurl_1.95-4.12     tibble_2.1.3        future.apply_1.3.0 
     ##  [97] tsne_0.1-3          crayon_1.3.4        KernSmooth_2.23-16 
     ## [100] plotly_4.9.0        GetoptLong_0.1.7    data.table_1.12.8  

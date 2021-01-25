@@ -119,68 +119,7 @@ activation for publication.
 
 ``` r
 source("../src/progenyScores.R")
-```
-
-    ## 
-    ## ********************************************************
-
-    ## Note: As of version 1.0.0, cowplot does not change the
-
-    ##   default ggplot2 theme anymore. To recover the previous
-
-    ##   behavior, execute:
-    ##   theme_set(theme_cowplot())
-
-    ## ********************************************************
-
-    ## Loading required package: RSQLite
-
-    ## Loading required package: RCurl
-
-    ## Loading required package: bitops
-
-    ## Loading required package: BiocGenerics
-
-    ## 
-    ## Attaching package: 'BiocGenerics'
-
-    ## The following objects are masked from 'package:parallel':
-    ## 
-    ##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-    ##     clusterExport, clusterMap, parApply, parCapply, parLapply,
-    ##     parLapplyLB, parRapply, parSapply, parSapplyLB
-
-    ## The following object is masked from 'package:gridExtra':
-    ## 
-    ##     combine
-
-    ## The following object is masked from 'package:limma':
-    ## 
-    ##     plotMA
-
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     IQR, mad, sd, var, xtabs
-
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     anyDuplicated, append, as.data.frame, basename, cbind,
-    ##     colnames, dirname, do.call, duplicated, eval, evalq, Filter,
-    ##     Find, get, grep, grepl, intersect, is.unsorted, lapply, Map,
-    ##     mapply, match, mget, order, paste, pmax, pmax.int, pmin,
-    ##     pmin.int, Position, rank, rbind, Reduce, rownames, sapply,
-    ##     setdiff, sort, table, tapply, union, unique, unsplit, which,
-    ##     which.max, which.min
-
-``` r
 source("../src/graphics.R")
-```
-
-    ## Loading required package: extrafont
-
-    ## Registering fonts with R
-
-``` r
 progeny_scatter.out <- progenyScatter(df, progeny.mat, fontfamily=fontTXT)
 ```
 

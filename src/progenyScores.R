@@ -184,17 +184,23 @@ progenyScatter <- function(df,weight_matrix,dfID = 1, weightID = 1, statName = "
       maxstat <- max(sub_df$stat)
       histo <- ggplot(sub_df, aes(x = stat, fill = "blue")) + geom_density() + 
 	      coord_flip() + scale_fill_manual( values = c("#00c5ff")) + xlim(minstat, maxstat) + 
+	      # Uncomment To check if 0 is centered with right panel. It must be the case
+# 		geom_vline(xintercept = 0, linetype = 'dotted') +
 	      theme_minimal() + 
-	      theme(legend.position = "none", 
-		    text=element_text(family=fontfamily, size=16),
-		    axis.text.x = element_blank(), 
-		    axis.ticks.x = element_blank(), 
-		    axis.title.y = element_blank(), 
-		    axis.text.y = element_blank(), 
-		    axis.ticks.y = element_blank(), 
-		    plot.background = element_rect(colour = "white"),
-		    panel.grid.major = element_blank(), 
-		    panel.grid.minor = element_blank())
+              theme(legend.position = "none",
+                    axis.text.x = element_text(family=fontfamily, size=16, colour="white"), 
+            axis.ticks.x = element_blank(),
+            axis.title.y = element_blank(),
+            # Otherwise both plots does not fit in same margin
+            axis.title.x = element_text(family=fontfamily, size=16),
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(), 
+            panel.grid.major = element_blank(),
+            axis.line = element_line(colour="white"),
+                panel.grid.minor = element_blank(),
+        plot.background = element_rect(colour = "white", fill="white")
+        )
+
 
       names(pathway_weights) <- c("ID","weight")
       pathway_weights <- pathway_weights[pathway_weights$weight != 0,]

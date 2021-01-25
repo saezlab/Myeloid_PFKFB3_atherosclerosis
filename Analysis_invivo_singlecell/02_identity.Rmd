@@ -117,46 +117,27 @@ draw(hp, heatmap_legend_side="right", annotation_legend_side="bottom")
 
 
 We show the UMAP plot with final annotations
-```{r umap_plot, dpi=300, warning=FALSE}
+```{r umap_plot, fig.width=6.5, fig.height=7.2, dpi=300, warning=FALSE}
 #geom_text <- function(...) geom_text(..., family="Calibri")
 #geom_repel <- function(...) geom_repel(..., family="Calibri")
 update_geom_defaults("text", list(family=fontTXT))
-DimPlot(S, reduction = "umap", label = TRUE, label.size = 9) + 
-	theme(text=element_text(family=fontTXT),
-	      axis.text=element_text(family=fontTXT, size=20),
-	      axis.title=element_text(family=fontTXT, size=20)
-	)
+DimPlot(S, reduction = "umap", label = FALSE) + 
+	guides(colour = guide_legend(override.aes = list(size=8), nrow=3)) + 
+	theme(legend.position="bottom",
+	      axis.title = element_text(size=12),
+	      axis.text= element_text(size=12))
 ```
 
-```{r umap_condition, dpi=300, warning=FALSE}
+And same UMAP plot split by conditions to check that all clusters are represented in both 
+conditions.
+
+```{r umap_condition, fig.width=6.5, fig.height=7, dpi=300, warning=FALSE}
 DimPlot(S, reduction = "umap", cols = c("grey","red"), group.by="stim", label = FALSE) + 
-	theme(text=element_text(family=fontTXT),
-	      axis.text=element_text(family=fontTXT, size=20),
-	      axis.title=element_text(family=fontTXT, size=20)
-	)
+	guides(colour = guide_legend(override.aes = list(size=8), nrow=1)) + 
+	theme(legend.position="bottom",
+	      axis.title = element_text(size=16),
+	      axis.text= element_text(size=16))
 ```
-
-```{r vln_Egln1, fig.width=8, fig.height=8, dpi=300}
-vln1 <- VlnPlot(S[,S$stim=="PHD2cKO"], feature="Egln1") + 
-	ggtitle("PHD2cKO") + xlab("") + ylab("Egln1 Expression") + NoLegend()
-vln2 <- VlnPlot(S[,S$stim=="WT"], feature="Egln1") + 
-	ggtitle("WT") + xlab("") + ylab("Egln1 Expression") + NoLegend()
-CombinePlots(list(vln1,vln2), ncol = 1)
-```
-
-```{r dplot_Egln1, fig.width=8, fig.height=6, dpi=300}
-dplot1  <- DotPlot(S[,S$stim=="PHD2cKO"], feature="Egln1") + 
-	ggtitle("PHD2cKO") + xlab("") + ylab("") + 
-	theme(axis.text.x=element_text(angle=45, hjust=1)) +
-	      coord_flip()
-
-dplot2 <- DotPlot(S[,S$stim=="WT"], feature="Egln1") + 
-	ggtitle("WT") + xlab("") + ylab("") + 
-	theme(axis.text.x=element_text(angle=45, hjust=1))+ 
-	      coord_flip()
-CombinePlots(list(dplot1,dplot2), ncol = 1)
-```
-
 
 ## Save the Seurat Object
 ```{r seurat_obj}

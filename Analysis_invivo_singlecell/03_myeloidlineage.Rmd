@@ -8,7 +8,7 @@ output: github_document
 From the in-vitro experiments, we showed that PHD2-KO in macrophages leads to Bnip3 apoptosis which aggravates atherogenesis. 
 Actually we observed that PHD2-KO induction of Bnip3 apoptosis in Macrophages leads to a cross-talk with fibroblasts, which is 
 associated with increased ECM production in atherosclerotic plaques. Moreover, this event could be reduced by depleting
-Bnip3 in Macrophages (upstream). To investigate this fuerther, we also have profiled bulk in-vitro data of this cellular 
+Bnip3 in Macrophages (upstream). To investigate this further, we also have profiled bulk in-vitro data of this cellular 
 cross-talk and characterized the mechanism. 
 We predicted that Spp1 released by macrophage might be the ligand involved in this interaction with fibroblasts. 
 Here, the data is derived from the in-vivo model which carries PHD2-KO in myeloid lineage. Thus we analyse 
@@ -74,7 +74,7 @@ the allocation of cell cycle phases in single cells.
 ```{r cc_mmu}
 # Lib of hsa2mmu orthologs
 mmu2hsa <- readRDS("../data/Gene_annotation/hgnc2mgi_hsa2mmu.rds")
-# Cicling genes from human to mouse
+# Cycling genes from human to mouse
 CC.genes <- lapply(cc.genes, function(vect) unlist(sapply(vect, function(z) mmu2hsa[[z]][1])))
 # Allocation
 S <- CellCycleScoring(S, s.features=CC.genes$s.genes, g2m.features=CC.genes$g2m.genes)
@@ -86,7 +86,7 @@ basophil, neutrophils, eosinophils, monocytes and macrophages. So far we have id
 the following populations of these in our map:
 
 ```{r}
-myeloid <- c("Megakaryocyte", "Trombocytes", "Erythrocyte", "Mast cell",
+myeloid <- c("Megakaryocyte", "Thrombocyte", "Erythrocyte", "Mast cell",
 	     "Basophil", "Neutrophil", "Eosinophil", "Monocyte", "Macrophage")
 grep(paste(myeloid, collapse="|"), levels(S), value=TRUE)
 ```

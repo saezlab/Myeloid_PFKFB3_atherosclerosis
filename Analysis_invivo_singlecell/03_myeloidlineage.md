@@ -12,7 +12,7 @@ ORCID: 0000-0003-0780-6683
 > cross-talk with fibroblasts, which is associated with increased ECM
 > production in atherosclerotic plaques. Moreover, this event could be
 > reduced by depleting Bnip3 in Macrophages (upstream). To investigate
-> this fuerther, we also have profiled bulk in-vitro data of this
+> this further, we also have profiled bulk in-vitro data of this
 > cellular cross-talk and characterized the mechanism. We predicted that
 > Spp1 released by macrophage might be the ligand involved in this
 > interaction with fibroblasts. Here, the data is derived from the
@@ -58,6 +58,13 @@ suppressPackageStartupMessages(require(ComplexHeatmap))
 suppressPackageStartupMessages(require(AUCell))
 suppressPackageStartupMessages(require(rcompanion))
 source("../src/graphics.R")
+```
+
+    ## Loading required package: extrafont
+
+    ## Registering fonts with R
+
+``` r
 source("../src/seurat_fx.R")
 source("../src/wilcox_fx.R")
 ```
@@ -83,7 +90,7 @@ use it for the allocation of cell cycle phases in single cells.
 ``` r
 # Lib of hsa2mmu orthologs
 mmu2hsa <- readRDS("../data/Gene_annotation/hgnc2mgi_hsa2mmu.rds")
-# Cicling genes from human to mouse
+# Cycling genes from human to mouse
 CC.genes <- lapply(cc.genes, function(vect) unlist(sapply(vect, function(z) mmu2hsa[[z]][1])))
 # Allocation
 S <- CellCycleScoring(S, s.features=CC.genes$s.genes, g2m.features=CC.genes$g2m.genes)
@@ -97,7 +104,7 @@ macrophages. So far we have identified the following populations of
 these in our map:
 
 ``` r
-myeloid <- c("Megakaryocyte", "Trombocytes", "Erythrocyte", "Mast cell",
+myeloid <- c("Megakaryocyte", "Thrombocyte", "Erythrocyte", "Mast cell",
          "Basophil", "Neutrophil", "Eosinophil", "Monocyte", "Macrophage")
 grep(paste(myeloid, collapse="|"), levels(S), value=TRUE)
 ```
@@ -238,26 +245,30 @@ M.i <- RunPCA(M.i, npcs = 30, verbose = FALSE)
 M.i <- RunUMAP(M.i, reduction = "pca", dims = 1:15)
 ```
 
-    ## 09:24:22 UMAP embedding parameters a = 0.9922 b = 1.112
+    ## Warning: The default method for RunUMAP has changed from calling Python UMAP via reticulate to the R-native UWOT using the cosine metric
+    ## To use Python UMAP via reticulate, set umap.method to 'umap-learn' and metric to 'correlation'
+    ## This message will be shown once per session
 
-    ## 09:24:22 Read 1119 rows and found 15 numeric columns
+    ## 10:28:11 UMAP embedding parameters a = 0.9922 b = 1.112
 
-    ## 09:24:22 Using Annoy for neighbor search, n_neighbors = 30
+    ## 10:28:11 Read 1119 rows and found 15 numeric columns
 
-    ## 09:24:22 Building Annoy index with metric = cosine, n_trees = 50
+    ## 10:28:11 Using Annoy for neighbor search, n_neighbors = 30
+
+    ## 10:28:11 Building Annoy index with metric = cosine, n_trees = 50
 
     ## 0%   10   20   30   40   50   60   70   80   90   100%
 
     ## [----|----|----|----|----|----|----|----|----|----|
 
     ## **************************************************|
-    ## 09:24:22 Writing NN index file to temp file /tmp/RtmpoOAuAl/file589a56cd8294
-    ## 09:24:22 Searching Annoy index using 1 thread, search_k = 3000
-    ## 09:24:23 Annoy recall = 100%
-    ## 09:24:23 Commencing smooth kNN distance calibration using 1 thread
-    ## 09:24:24 Initializing from normalized Laplacian + noise
-    ## 09:24:24 Commencing optimization for 500 epochs, with 42490 positive edges
-    ## 09:24:27 Optimization finished
+    ## 10:28:11 Writing NN index file to temp file /tmp/Rtmp16jQvl/file3bfd278deff0
+    ## 10:28:11 Searching Annoy index using 1 thread, search_k = 3000
+    ## 10:28:12 Annoy recall = 100%
+    ## 10:28:12 Commencing smooth kNN distance calibration using 1 thread
+    ## 10:28:13 Initializing from normalized Laplacian + noise
+    ## 10:28:13 Commencing optimization for 500 epochs, with 42490 positive edges
+    ## 10:28:16 Optimization finished
 
 It seems that both conditions present all types of myeloid
 leukocytes.

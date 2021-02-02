@@ -1,5 +1,5 @@
 ---
-title: "Role of PHD2 atherogenesis in in-vivo Macrophages"
+title: "Role of PHD2 atherogenesis in in-vivo plaque Macrophages"
 author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
 output: github_document
 ---
@@ -232,7 +232,6 @@ M$Hypoxia_response <- prog["Hypoxia",]
 rm(common,prog)
 
 # Visualization focused on Macrophages population
- # VlnPlot(S[, Idents(M)=="Macrophage"],features = "Hypoxia_response", group.by = "stim")
 VlnPlot.stim(M[, MacIDs], # Macrophages
      meta.feature = "Hypoxia_response", ylab="Hypoxia response (Score)", 
      fontTXT=fontTXT)
@@ -249,7 +248,7 @@ testing twice.
 
 Here we show it again, but restricted to Macrophages.
 
-```{r vlnsplit_macrophage_PHD2cKO, fig.with=10, fig.height=6, warning=FALSE}
+```{r vlnsplit_macrophage_PHD2cKO, fig.width=7, fig.height=6, warning=FALSE}
 wPHD2cKO_stats <- read.table(file=paste0("./03_myeloidlineage_output/data",
 					 "/PHD2cKO_wilcox_stats.csv"),
 			     sep=",", header=TRUE, stringsAsFactors=FALSE)
@@ -311,7 +310,7 @@ other myeloid leukocytes, but it is shown here focused on macrophages.
 we use the statistics from previous analysis so we do not have to correct for multiple
 testing twice.
 
-```{r vlnsplit_macrophage_Bnip3, fig.with=10, fig.height=6, warning=FALSE}
+```{r vlnsplit_macrophage_Bnip3, fig.width=7, fig.height=6, warning=FALSE}
 wBnip3_stats <- read.table(file=paste0("./03_myeloidlineage_output/data",
 					 "/Bnip3_wilcox_stats.csv"),
 			     sep=",", header=TRUE, stringsAsFactors=FALSE)
@@ -332,7 +331,7 @@ vln_Bnip3
 
 ### Spp1 expression across macrophages
 
-```{r vlnsplit_macrophage_Spp1, fig.with=10, fig.height=6, warning=FALSE}
+```{r vlnsplit_macrophage_Spp1, fig.width=7, fig.height=6, warning=FALSE}
 wSpp1_stats <- read.table(file=paste0("./03_myeloidlineage_output/data",
 					 "/Spp1_wilcox_stats.csv"),
 			     sep=",", header=TRUE, stringsAsFactors=FALSE)
@@ -556,7 +555,7 @@ colnames(RES)[ncol(RES)] <- ""
 
 plotVln(SeuratObject = S1, gene="Spp1", meta=NULL,
 	stats=RES,
-	vlnsplit = TRUE, fontTXT,  nCell.y=-0.2, pt.alpha=0.4) +
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.3, pt.alpha=0.4) +
       guides(fill= guide_legend(nrow=2, byrow=TRUE)) 
 ```
 

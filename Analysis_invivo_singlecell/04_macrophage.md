@@ -1,4 +1,4 @@
-Role of PHD2 atherogenesis in in-vivo Macrophages
+Role of PHD2 atherogenesis in in-vivo plaque Macrophages
 ================
 Javier Perales-Patón - <javier.perales@bioquant.uni-heidelberg.de> -
 ORCID: 0000-0003-0780-6683
@@ -281,7 +281,6 @@ M$Hypoxia_response <- prog["Hypoxia",]
 rm(common,prog)
 
 # Visualization focused on Macrophages population
- # VlnPlot(S[, Idents(M)=="Macrophage"],features = "Hypoxia_response", group.by = "stim")
 VlnPlot.stim(M[, MacIDs], # Macrophages
      meta.feature = "Hypoxia_response", ylab="Hypoxia response (Score)", 
      fontTXT=fontTXT)
@@ -699,7 +698,7 @@ colnames(RES)[ncol(RES)] <- ""
 
 plotVln(SeuratObject = S1, gene="Spp1", meta=NULL,
     stats=RES,
-    vlnsplit = TRUE, fontTXT,  nCell.y=-0.2, pt.alpha=0.4) +
+    vlnsplit = TRUE, fontTXT,  nCell.y=-0.3, pt.alpha=0.4) +
       guides(fill= guide_legend(nrow=2, byrow=TRUE)) 
 ```
 
@@ -748,7 +747,7 @@ sessionInfo()
     ##  [8] datasets  methods   base     
     ## 
     ## other attached packages:
-    ##  [1] ComplexHeatmap_2.0.0 extrafont_0.17       openxlsx_4.2.3      
+    ##  [1] extrafont_0.17       ComplexHeatmap_2.0.0 openxlsx_4.2.3      
     ##  [4] dplyr_0.8.3          purrr_0.3.2          viper_1.18.1        
     ##  [7] AUCell_1.6.1         ggrepel_0.8.1        ggplot2_3.2.1       
     ## [10] fgsea_1.10.1         Rcpp_1.0.2           genesorteR_0.3.1    

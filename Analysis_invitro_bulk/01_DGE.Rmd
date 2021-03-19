@@ -257,7 +257,7 @@ for(cont in names(H.res)) {
 }
 ```
 
-We report the significant (FDR<0.05) hallmarks enriched in the macrophage phenotypes.
+We report the significant (Adj.P-value<0.05) hallmarks enriched in the macrophage phenotypes.
 ```{r barplot_GSEA_hallmarks_macrophage, fig.width=7, fig.height=6, dpi=300, warning=FALSE}
 df <- as.data.frame(H.res$MC_PHD2[,c("pathway","NES","padj")])
 df <- df[order((df$NES), decreasing=FALSE),]
@@ -307,7 +307,7 @@ if(any(!Mac_interesting_genes %in% rownames(v$E))) {
 }
 
 topTab <- topTable(eBay, coef="MC_PHD2", number = Inf)
-topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"FDR<0.05","n.s.")
+topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"Adj.P-value<0.05","n.s.")
 topTab$show <- topTab$genes %in% Mac_interesting_genes
  
 p = ggplot(topTab, aes(logFC, -log10(P.Value))) +
@@ -372,7 +372,7 @@ plotGseaTable(ECM, rnk, ECM.res)  +
 ```{r volcano_Fibroblasts_PHD2coCult, dpi=300, fig.width=8, fig.height=6, warning=FALSE}
 
 topTab <- topTable(eBay, coef="Fib_PHD2", number = Inf)
-topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"FDR<0.05","n.s.")
+topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"Adj.P-value<0.05","n.s.")
 topTab$show <- topTab$genes %in% unlist(ECM.res[which(ECM.res$pathway=="Collagens"), "leadingEdge"])
  
 p = ggplot(topTab, aes(x=logFC, y=-log10(P.Value))) +

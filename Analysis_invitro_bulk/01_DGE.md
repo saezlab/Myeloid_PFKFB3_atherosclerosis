@@ -453,7 +453,7 @@ for(cont in names(H.res)) {
 }
 ```
 
-We report the significant (FDR\<0.05) hallmarks enriched in the
+We report the significant (Adj.P-value\<0.05) hallmarks enriched in the
 macrophage phenotypes.
 
 ``` r
@@ -515,7 +515,7 @@ if(any(!Mac_interesting_genes %in% rownames(v$E))) {
 
 ``` r
 topTab <- topTable(eBay, coef="MC_PHD2", number = Inf)
-topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"FDR<0.05","n.s.")
+topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"Adj.P-value<0.05","n.s.")
 topTab$show <- topTab$genes %in% Mac_interesting_genes
  
 p = ggplot(topTab, aes(logFC, -log10(P.Value))) +
@@ -616,7 +616,7 @@ plotGseaTable(ECM, rnk, ECM.res)  +
 
 ``` r
 topTab <- topTable(eBay, coef="Fib_PHD2", number = Inf)
-topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"FDR<0.05","n.s.")
+topTab$significant <- ifelse(topTab$adj.P.Val < 0.05,"Adj.P-value<0.05","n.s.")
 topTab$show <- topTab$genes %in% unlist(ECM.res[which(ECM.res$pathway=="Collagens"), "leadingEdge"])
  
 p = ggplot(topTab, aes(x=logFC, y=-log10(P.Value))) +
@@ -684,7 +684,7 @@ sessionInfo()
     ##  [7] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
     ## [10] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
     ## [13] BiocGenerics_0.30.0  cowplot_1.0.0        extrafont_0.17      
-    ## [16] ggrepel_0.8.1        ggplot2_3.2.1        dplyr_0.8.3         
+    ## [16] ggrepel_0.8.1        ggplot2_3.3.3        dplyr_0.8.3         
     ## [19] edgeR_3.26.7         limma_3.40.6         rmarkdown_1.15      
     ## [22] nvimcom_0.9-82      
     ## 
@@ -693,19 +693,19 @@ sessionInfo()
     ##  [4] zeallot_0.1.0       digest_0.6.21       plyr_1.8.4         
     ##  [7] R6_2.4.0            backports_1.1.4     RSQLite_2.1.2      
     ## [10] evaluate_0.14       pillar_1.4.2        rlang_0.4.0        
-    ## [13] lazyeval_0.2.2      data.table_1.12.8   extrafontdb_1.0    
-    ## [16] blob_1.2.0          Matrix_1.2-17       labeling_0.3       
-    ## [19] BiocParallel_1.18.1 stringr_1.4.0       RCurl_1.95-4.12    
-    ## [22] bit_1.1-14          munsell_0.5.0       compiler_3.6.1     
-    ## [25] xfun_0.9            pkgconfig_2.0.3     htmltools_0.3.6    
-    ## [28] tidyselect_0.2.5    tibble_2.1.3        crayon_1.3.4       
-    ## [31] withr_2.1.2         bitops_1.0-6        grid_3.6.1         
-    ## [34] xtable_1.8-4        Rttf2pt1_1.3.8      gtable_0.3.0       
-    ## [37] DBI_1.0.0           magrittr_1.5        scales_1.0.0       
-    ## [40] stringi_1.4.3       vctrs_0.2.0         fastmatch_1.1-0    
-    ## [43] tools_3.6.1         bit64_0.9-7         glue_1.3.1         
-    ## [46] purrr_0.3.2         yaml_2.2.0          colorspace_1.4-1   
-    ## [49] memoise_1.1.0       knitr_1.24
+    ## [13] data.table_1.12.8   extrafontdb_1.0     blob_1.2.0         
+    ## [16] Matrix_1.2-17       labeling_0.3        BiocParallel_1.18.1
+    ## [19] stringr_1.4.0       RCurl_1.95-4.12     bit_1.1-14         
+    ## [22] munsell_0.5.0       compiler_3.6.1      xfun_0.9           
+    ## [25] pkgconfig_2.0.3     htmltools_0.3.6     tidyselect_0.2.5   
+    ## [28] tibble_2.1.3        crayon_1.3.4        withr_2.1.2        
+    ## [31] bitops_1.0-6        grid_3.6.1          xtable_1.8-4       
+    ## [34] Rttf2pt1_1.3.8      gtable_0.3.0        DBI_1.0.0          
+    ## [37] magrittr_1.5        scales_1.0.0        stringi_1.4.3      
+    ## [40] vctrs_0.2.0         fastmatch_1.1-0     tools_3.6.1        
+    ## [43] bit64_0.9-7         glue_1.3.1          purrr_0.3.2        
+    ## [46] yaml_2.2.0          colorspace_1.4-1    memoise_1.1.0      
+    ## [49] knitr_1.24
 
 ``` r
 {                                                                                                                                                                                                           

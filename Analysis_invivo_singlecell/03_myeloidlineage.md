@@ -39,6 +39,7 @@ if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
 FIGDIR <- paste0(OUTDIR, "/figures/")
 knitr::opts_chunk$set(fig.path=FIGDIR)
 knitr::opts_chunk$set(dev=c('png','tiff'))
+knitr::opts_chunk$set(dpi=300)
 # Data
 DATADIR <- paste0(OUTDIR, "/data/")
 if(!dir.exists(DATADIR)) dir.create(DATADIR);
@@ -249,26 +250,26 @@ M.i <- RunUMAP(M.i, reduction = "pca", dims = 1:15)
     ## To use Python UMAP via reticulate, set umap.method to 'umap-learn' and metric to 'correlation'
     ## This message will be shown once per session
 
-    ## 10:28:11 UMAP embedding parameters a = 0.9922 b = 1.112
+    ## 12:08:38 UMAP embedding parameters a = 0.9922 b = 1.112
 
-    ## 10:28:11 Read 1119 rows and found 15 numeric columns
+    ## 12:08:38 Read 1119 rows and found 15 numeric columns
 
-    ## 10:28:11 Using Annoy for neighbor search, n_neighbors = 30
+    ## 12:08:38 Using Annoy for neighbor search, n_neighbors = 30
 
-    ## 10:28:11 Building Annoy index with metric = cosine, n_trees = 50
+    ## 12:08:38 Building Annoy index with metric = cosine, n_trees = 50
 
     ## 0%   10   20   30   40   50   60   70   80   90   100%
 
     ## [----|----|----|----|----|----|----|----|----|----|
 
     ## **************************************************|
-    ## 10:28:11 Writing NN index file to temp file /tmp/Rtmp16jQvl/file3bfd278deff0
-    ## 10:28:11 Searching Annoy index using 1 thread, search_k = 3000
-    ## 10:28:12 Annoy recall = 100%
-    ## 10:28:12 Commencing smooth kNN distance calibration using 1 thread
-    ## 10:28:13 Initializing from normalized Laplacian + noise
-    ## 10:28:13 Commencing optimization for 500 epochs, with 42490 positive edges
-    ## 10:28:16 Optimization finished
+    ## 12:08:38 Writing NN index file to temp file /tmp/RtmppalyPl/file21e627bc380d
+    ## 12:08:38 Searching Annoy index using 1 thread, search_k = 3000
+    ## 12:08:38 Annoy recall = 100%
+    ## 12:08:38 Commencing smooth kNN distance calibration using 1 thread
+    ## 12:08:39 Initializing from normalized Laplacian + noise
+    ## 12:08:39 Commencing optimization for 500 epochs, with 42490 positive edges
+    ## 12:08:42 Optimization finished
 
 It seems that both conditions present all types of myeloid
 leukocytes.
@@ -371,7 +372,7 @@ shows progresively that these annotations are correct.
 
 ``` r
 M.i <- RenameIdents(M.i, c("0"="Resident-Mac_1",
-               "1"="Trem2-foamy-Mac",
+               "1"="TREM2hi-Mac",
                "2"="Inflammatory-Mac",
                "3"="Monocyte",
                "4"="Cavity-Mac",
@@ -405,7 +406,7 @@ table(Idents(M.i))
     ## 
     ##       Cavity-Mac        IFNIC-Mac Inflammatory-Mac   Resident-Mac_1 
     ##               69               15              200              213 
-    ##   Resident-Mac_2  Trem2-foamy-Mac        Mature-DC             MoDC 
+    ##   Resident-Mac_2      TREM2hi-Mac        Mature-DC             MoDC 
     ##               32              212               21               60 
     ##         Monocyte       Neutrophil             n.a.    Proliferating 
     ##              160               64               25               48
@@ -560,13 +561,13 @@ print(cell_pop)
     ##   PHD2cKO         29         8               78            105
     ##   WT              40         7              122            108
     ##          
-    ##           Resident-Mac_2 Trem2-foamy-Mac Mature-DC MoDC Monocyte
-    ##   PHD2cKO             13              82         5   23       64
-    ##   WT                  19             130        16   37       96
+    ##           Resident-Mac_2 TREM2hi-Mac Mature-DC MoDC Monocyte Neutrophil
+    ##   PHD2cKO             13          82         5   23       64         29
+    ##   WT                  19         130        16   37       96         35
     ##          
-    ##           Neutrophil n.a. Proliferating
-    ##   PHD2cKO         29   15            18
-    ##   WT              35   10            30
+    ##           n.a. Proliferating
+    ##   PHD2cKO   15            18
+    ##   WT        10            30
 
 ``` r
 # Cell Proportions
@@ -662,6 +663,14 @@ print(invitro.gs)
     ## [49] "Fam214a"  "Antxr2"
 
 ``` r
+# Export used signature as supplementary table
+# NOTE: this is just a subset of the original table above (i.e. DGE fom PHD2cKO BMDM macrophages)
+write.table(invitro.dge[invitro.dge$genes %in% invitro.gs, ], sep=",",
+        file=paste0(DATADIR, "/PHD2cKO_BMDM-derived_signature.csv"),
+        row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+``` r
 # Build rankings for AUC
 cells_rankings <- AUCell_buildRankings(as.matrix(M.i@assays$RNA@data))
 ```
@@ -716,7 +725,7 @@ print(wPHD2cKO_stats)
     ## IFNIC-Mac          13.0 9.386169e-02  0.4490 1.206793e-01           ns
     ## Inflammatory-Mac 1808.5 1.506786e-13  0.5230 6.780536e-13          ***
     ## Resident-Mac     3544.0 1.049791e-12  0.4550 3.149372e-12          ***
-    ## Trem2-foamy-Mac  2028.5 3.230795e-14  0.5210 2.907716e-13          ***
+    ## TREM2hi-Mac      2028.5 3.230795e-14  0.5210 2.907716e-13          ***
     ## Mature-DC          12.0 1.936213e-02  0.5040 2.904320e-02            *
     ## MoDC              449.0 7.265644e-01 -0.0461 7.265644e-01           ns
     ## Monocyte         2732.5 2.377067e-01  0.0933 2.674200e-01           ns
@@ -782,7 +791,7 @@ print(wBnip3_stats)
     ## IFNIC-Mac          28.0         NaN      NaN        NaN           nt
     ## Inflammatory-Mac 4192.0 0.054686604  0.13600 0.09570156           ns
     ## Resident-Mac     6454.0 0.008279478  0.16900 0.05795635           ns
-    ## Trem2-foamy-Mac  4576.0 0.017187703  0.16300 0.06015696           ns
+    ## TREM2hi-Mac      4576.0 0.017187703  0.16300 0.06015696           ns
     ## Mature-DC          40.0         NaN      NaN        NaN           nt
     ## MoDC              489.0 0.104981284 -0.21000 0.12247816           ns
     ## Monocyte         3084.0 0.950277445 -0.00515 0.95027745           ns
@@ -848,7 +857,7 @@ print(wSpp1_stats)
     ## IFNIC-Mac          41.5 1.202328e-01 -0.416 0.1202328005           ns
     ## Inflammatory-Mac 5561.0 2.727282e-02 -0.156 0.0409092264            *
     ## Resident-Mac     8881.0 2.987933e-03 -0.190 0.0067228493           **
-    ## Trem2-foamy-Mac  3912.5 1.101742e-03  0.224 0.0049578392           **
+    ## TREM2hi-Mac      3912.5 1.101742e-03  0.224 0.0049578392           **
     ## Mature-DC          57.5 9.445417e-02 -0.375 0.1109309402           ns
     ## MoDC              591.0 8.129911e-03 -0.342 0.0146338396            *
     ## Monocyte         4038.0 8.594198e-05 -0.311 0.0007734778          ***
@@ -927,7 +936,7 @@ sessionInfo()
     ##  [7] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
     ## [10] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
     ## [13] BiocGenerics_0.30.0  openxlsx_4.2.3       dplyr_0.8.3         
-    ## [16] purrr_0.3.2          ggplot2_3.2.1        cowplot_1.0.0       
+    ## [16] purrr_0.3.2          ggplot2_3.3.3        cowplot_1.0.0       
     ## [19] Seurat_3.1.0         rmarkdown_1.15       nvimcom_0.9-82      
     ## 
     ## loaded via a namespace (and not attached):

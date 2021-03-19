@@ -24,7 +24,7 @@ other attached packages:
  [7] annotate_1.62.0      XML_3.98-1.20        AnnotationDbi_1.46.1
 [10] IRanges_2.18.2       S4Vectors_0.22.1     Biobase_2.44.0      
 [13] BiocGenerics_0.30.0  openxlsx_4.2.3       dplyr_0.8.3         
-[16] purrr_0.3.2          ggplot2_3.2.1        cowplot_1.0.0       
+[16] purrr_0.3.2          ggplot2_3.3.3        cowplot_1.0.0       
 [19] Seurat_3.1.0         rmarkdown_1.15       nvimcom_0.9-82      
 
 loaded via a namespace (and not attached):

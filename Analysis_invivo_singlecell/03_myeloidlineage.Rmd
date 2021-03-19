@@ -34,6 +34,7 @@ if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
 FIGDIR <- paste0(OUTDIR, "/figures/")
 knitr::opts_chunk$set(fig.path=FIGDIR)
 knitr::opts_chunk$set(dev=c('png','tiff'))
+knitr::opts_chunk$set(dpi=300)
 # Data
 DATADIR <- paste0(OUTDIR, "/data/")
 if(!dir.exists(DATADIR)) dir.create(DATADIR);
@@ -239,7 +240,7 @@ are correct.
 
 ```{r myeloid_rids}
 M.i <- RenameIdents(M.i, c("0"="Resident-Mac_1",
-			   "1"="Trem2-foamy-Mac",
+			   "1"="TREM2hi-Mac",
 			   "2"="Inflammatory-Mac",
 			   "3"="Monocyte",
 			   "4"="Cavity-Mac",
@@ -441,6 +442,11 @@ common <- setdiff(common, avoid_genes)
 # Define signature and show
 invitro.gs <- names(sort(invitro.sign[common],decreasing = TRUE))[1:50]
 print(invitro.gs)
+# Export used signature as supplementary table
+# NOTE: this is just a subset of the original table above (i.e. DGE fom PHD2cKO BMDM macrophages)
+write.table(invitro.dge[invitro.dge$genes %in% invitro.gs, ], sep=",",
+	    file=paste0(DATADIR, "/PHD2cKO_BMDM-derived_signature.csv"),
+	    row.names=FALSE, col.names=TRUE, quote=FALSE)
 ```
 
 ```{r aucell_phd2ko_ML, fig.width=6, fig.height=7, dpi=300, warning=FALSE}

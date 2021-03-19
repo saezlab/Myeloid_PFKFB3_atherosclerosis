@@ -1,6 +1,6 @@
 Resident_Mac	> Zernecke et al. 2020. Top10 gene signature. Online Figure II	Folr2	Lyve1	Ltc4s	Cd163	C4b	Ccl24	Fxyd2	Igfbp4	Cd209f
 Inflammatory_Mac	> Zernecke et al. 2020	Nlrp3	Phlda1	Tnfsf9	Maff	Cxcl10	Id3	Bcl2a1a	Cxcl1	Il10	Tnip3
-Trem2_foamy_Mac	> Zernecke et al. 2020. Top10 gene signature. Online Figure II	Spp1	Gpnmb	Mmp12	AA467197	Syngr1	Pld3	Cd5l	Mgp
+TREM2hi_Mac	> Zernecke et al. 2020. Top10 gene signature. Online Figure II	Spp1	Gpnmb	Mmp12	AA467197	Syngr1	Pld3	Cd5l	Mgp
 MoDC/cDC2	> Zernecke et al. 2020. Top10 gene signature. Online Figure II	Cd209a	Ifitm1	Klrd1	H1-DMb2	Il1r2	H2-Oa
 Monocytes	> Zernecke et al. 2020. Top10 gene signature. Online Figure II	Plac8	Chil3	Ly6c2	F10	Hp	Thbs1	Gsr	Clec4e	Slpi	Osm
 IFNIC_Mac	> Zernecke et al. 2020. Top10 gene signature. Online Figure II	Irf7	Isg15	Ifit3	Mnda	Zbp1	Ifit1	Rsad2	Ms4a4c	Ly6a	Phf11b

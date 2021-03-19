@@ -10,9 +10,9 @@ Previously we have shown that PHD2-KO is well recovered in most of the
 in-vivo myeloid leukocytes from the PHD2cKO condition. Bnip3, which is associated with the phenotype 
 and macrophage apoptosis, seems to be up-regulated in said comparison in-vivo. Spp1, the prediced 
 ligand released by Macrophages to modulate fibrotic fibroblasts based on the in-vitro data, seems to be
-mainly released by Trem2-foamy Macrophages. Thus, there is concordance between in-vitro and in-vivo
+mainly released by TREM2hi Macrophages. Thus, there is concordance between in-vitro and in-vivo
 data, but the (in-vivo) single-cell RNAseq data might provide higher resolution. Mainly pointing out 
-Trem2-foamy macrophages as main players. Thus we investigate this line further here.
+TREM2hi macrophages as main players. Thus we investigate this line further here.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -34,6 +34,7 @@ if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
 FIGDIR <- paste0(OUTDIR, "/figures/")
 knitr::opts_chunk$set(fig.path=FIGDIR)
 knitr::opts_chunk$set(dev=c('png','tiff'))
+knitr::opts_chunk$set(dpi=300)
 # Data
 DATADIR <- paste0(OUTDIR, "/data/")
 if(!dir.exists(DATADIR)) dir.create(DATADIR);
@@ -54,6 +55,8 @@ suppressPackageStartupMessages(require(purrr))
 suppressPackageStartupMessages(require(dplyr))
 suppressPackageStartupMessages(require(openxlsx))
 suppressPackageStartupMessages(require(ComplexHeatmap))
+suppressPackageStartupMessages(require(clusterProfiler))
+suppressPackageStartupMessages(require(ggsignif))
 source("../src/graphics.R")
 source("../src/seurat_fx.R")
 source("../src/wilcox_fx.R")
@@ -103,6 +106,23 @@ hp <- DoHeatmap3(SeuratObject=M[, MacIDs], GSC=ML.markers, assay="RNA", res="Ide
 	   show_hr=FALSE, legend_nrow=2, fontfamily=fontTXT) 
 draw(hp, heatmap_legend_side="right", annotation_legend_side="bottom")
 ```
+
+We confirm the TREM2hi macrophages identity looking into detail in the all differentially
+expressed genes from Zernecke et al 2020.
+
+```{r heatmap_Zernecke_TREM2hi, fig.width=14, fig.height=10, dpi=300, warning=FALSE}
+trem2 <- read.table("../data/markers/Trem2_foamy-Mac_DEGs_Zernecke2020.tsv", 
+		     sep="\t", header=TRUE, stringsAsFactors=FALSE)
+
+trem2 <- trem2[trem2$p_val_adj < 0.05, ]
+
+trem2 <- GeneSetCollection(GeneSet(trem2$gene, setName="Trem2.Mac"))
+hp <- DoHeatmap3(SeuratObject=M[, MacIDs], GSC=trem2, assay="RNA", res="Idents", 
+	   row_names_size=0, column_title_size=0,
+	   show_hr=FALSE, legend_nrow=2, fontfamily=fontTXT) 
+draw(hp, heatmap_legend_side="right", annotation_legend_side="bottom")
+```
+
 
 ## Comparison between PHD2 functional perturbation
 
@@ -237,6 +257,46 @@ VlnPlot.stim(M[, MacIDs], # Macrophages
      fontTXT=fontTXT)
 ```
 
+### Predisposition to hypoxia response
+
+To understand better how macrophages response to hypoxia in atherosclerotic plaques,
+we check whether there is any macrophage subset with higher response in the WT 
+condition (predisposition to hypoxia).
+
+```{r vlnsplit_hypoxia_predisposition_WTmac, fig.width=5, fig.height=7, dpi=300, warning=FALSE}
+S3 <- M[, MacIDs]
+WT_Mac <- S3[, S3$stim=="WT"]
+
+wHypoxiaTrem2_stats <- t(sapply(setdiff(levels(WT_Mac), "TREM2hi-Mac"), function(cell) {
+				   cellIds <- WhichCells(WT_Mac, idents=c(cell, "TREM2hi-Mac"))
+				   # The test
+				   wilcox.test_stats(xy=WT_Mac[, cellIds]@meta.data$Hypoxia_response,
+						     gr=factor(as.character(Idents(WT_Mac)[cellIds])))
+
+				   
+					 }))
+wHypoxiaTrem2_stats <- as.data.frame(wHypoxiaTrem2_stats)
+wHypoxiaTrem2_stats$adjpval <- p.adjust(wHypoxiaTrem2_stats$pvalue, method="fdr")
+wHypoxiaTrem2_stats$significance <- tagSignif(wHypoxiaTrem2_stats$adjpval)
+
+RES <- wHypoxiaTrem2_stats
+RES$r <- format(round(RES$r, 2), nsmall=2)
+RES$ann <- paste("r=",RES$r,"\n",RES$significance)
+RES <- RES[rev(rownames(RES)), ]
+
+gg1 <- plotVln(SeuratObject = WT_Mac, gene=NULL, meta="Hypoxia_response",
+	stats=NULL,
+	vlnsplit = FALSE, fontTXT,  nCell.y=-3.2, pt.alpha=0.4) +
+	ylab("Scaled activity score") + NoLegend() +
+	coord_cartesian(ylim = c(-3.5, 7), clip="off")
+
+gg1 + geom_signif(comparisons = sapply(rownames(RES), function(z) c(z, "TREM2hi-Mac"), simplify=FALSE),
+		  colour="black",
+	    y_position = seq(from=2.5, by=1.2, length.out=4),
+		  annotations= RES$ann)
+```
+
+
 ### Enrichment of in-vitro PHD2-KO signature
 In the previous step, [03_myeloidlineage.md](03_myeloidlineage.md), we have already
 calculated a single-cell score of the enrichment of in-vitro PHD2-KO signature among
@@ -296,7 +356,79 @@ pairs(M@meta.data[MacIDs,
 > Conclusion: We could conclude that PHD2-cKO condition presents a skewed distribution of cells towards 
 hypoxia response as compared to PHD2-wt condition. The PHD2cKO signature expression is highly correlated
 to Hif1a transcription factor and hypoxia response activities. Their activity and expression is higher in
-macrophages from PHD2cKO condition.
+macrophages from PHD2cKO condition. As a baseline, wild-type TREM2hi macrophages seems to present 
+a slight higher response to hypoxia in atherosclerotic plaques as compared to other subsets such as 
+resident and inflammatory macrophages.
+
+## Investigation of TREM2hi macrophages
+
+We look into the comparison between PHD2cKO and WT TREM2hi macrophages. 
+We observed that there is a tendency of Spp1 over-expression in PHD2cKO macrophages.
+Actually Spp1 has been described as a marker gene of TREM2hi macrophages (Zernecke et al 2020).
+Thus we look into detail for over-expression of other TREM2hi macrophages beyond Spp1
+in all subsets.
+
+First we look at the top 10 over-expressed genes in TREM2hi.
+```{r vlnsplit_TREM2hi_Signature_top10, fig.width=16, fig.height=8, warning=FALSE}
+plots <- sapply(unlist(geneIds(trem2))[1:10], function(trem2_gene) {
+	       plotVln(SeuratObject = M[, MacIDs], gene=trem2_gene, meta=NULL,
+		       stats=NULL,
+		       vlnsplit = TRUE, fontTXT,  nCell.y=-0.5, pt.alpha=0.4) +
+       		NoLegend()
+	}, simplify=FALSE)
+
+plot_grid(plotlist = plots, nrow=2)
+```
+
+Second we estimate a single-cell enrichment score of the over-expression of TREM2hi signature to
+see if there is any difference in PHD2cKO condition among macrophage subsets.
+
+```{r aucell_TREM2hi_signature, fig.width=5, fig.height=7, dpi=300, warning=FALSE}
+# Build rankings for AUC
+cells_rankings <- AUCell_buildRankings(as.matrix(M[, MacIDs]@assays$RNA@data))
+# Use top N (e.g. 50) to calculate enrichment at single-cell level
+cells_AUC <- AUCell_calcAUC(lapply(geneIds(trem2), function(gs) head(gs,50)), 
+			cells_rankings, 
+			 aucMaxRank=nrow(cells_rankings)*0.05)
+# Explore thresholds
+cells_assignment <- AUCell_exploreThresholds(cells_AUC, plotHist=FALSE, assign=TRUE) 
+# Get AUCell scores  
+AUC.sign <- getAUC(cells_AUC)[1,]
+stopifnot(colnames(M[, MacIDs]) == names(AUC.sign))
+M$trem2.Mac <- NA
+M$trem2.Mac[MacIDs] <- AUC.sign
+rm(AUC.sign, cells_rankings, cells_AUC, cells_assignment)
+```
+
+```{r vlnsplit_TREM2hi_SignatureMapping_macrophages, fig.width=6, fig.height=7, warning=FALSE}
+wTrem2_stats <- t(sapply(levels(M[, MacIDs]), function(cell) {
+				   cellIds <- WhichCells(M[, MacIDs], idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=M[, cellIds]@meta.data$trem2.Mac,
+						     gr=M[, cellIds]$stim)
+			   }))
+wTrem2_stats <- as.data.frame(wTrem2_stats)
+wTrem2_stats$adjpval <- p.adjust(wTrem2_stats$pvalue, method="fdr")
+wTrem2_stats$significance <- tagSignif(wTrem2_stats$adjpval)
+print(wTrem2_stats)
+
+RES <- wTrem2_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+
+plotVln(SeuratObject = M[, MacIDs], gene=NULL, meta="trem2.Mac",
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=0, pt.alpha=0.4) +
+	ylab("Enrichment score (AUC)") + ggtitle("Trem2-foamy Macrophage signature") +
+      guides(fill= guide_legend(nrow=2, byrow=TRUE)) 
+```
+
+> Conclusion: We have correctly identified TREM2hi macrophages. These over-express Spp1, which is 
+up-regulated upon PHD2cKO perturbation. However, it seems that there is no difference in the
+expression of the TREM2hi signature (i.e. the rest of the over-expressed genes in TREM2hi macrophages 
+as compared to other myeloid leukocytes subset) upon PHD2cKO, but mainly Spp1.
+
+
 
 ## PHD2KO-Bnip3-Spp1 axis
 
@@ -352,7 +484,7 @@ vln_Spp1
 > Conclusion: Bnip3 is hampered by drop-outs in single-cell profiling (zero-inflation), 
 thus it makes difficult to compare groups. However, it seems that Bnip3 is up-regulated 
 upon PHD2cKO. In contrast, PHD2cKO-induced up-regulation of Spp1 expression seems to be 
-specific of Trem2-foamy macrophages.
+specific of TREM2hi macrophages.
 
 Next we stratify macrophages to compare those undergoing complete PHD2-KO.
 
@@ -559,6 +691,204 @@ plotVln(SeuratObject = S1, gene="Spp1", meta=NULL,
       guides(fill= guide_legend(nrow=2, byrow=TRUE)) 
 ```
 
+## Differences in TREM2hi macrophages
+We investigate if any difference between TREM2hi macrophage.
+We cannot describe cell numbers between the two conditions because of the experimental design where
+a pool of mice were profiled at once per condition, but these proportions are described in the previous
+analysis of the myeloid lineage. It seems proportions does not change between conditions.
+
+Next we perform differential expression to uncover the main biological processes underlying PHD2cKO. For this,
+we use the already stratification by low and high expression of the PHD2cKO signature derived from in-vitro.
+
+```{r TREM2hi_dge}
+TREM2hi.idx <- WhichCells(M, idents="TREM2hi-Mac")
+S2 <- M[, TREM2hi.idx] 
+Idents(S2) <- "PHD2cKO_class2"
+dge <- FindMarkers(S2, ident.1 = "PHD2cKO_High", ident.2 = "WT_Low",
+		   min.pct = 0, logfc.threshold = 0)
+
+saveRDS(dge, file=paste0(DATADIR,"/TREM2hi-Mac_PHD2cKO_High_DGE.Rds"))
+
+write.table(as.data.frame(dge), 
+	    file=paste0(DATADIR,"/TREM2hi-Mac_PHD2cKO_High_DGE.csv"), 
+	    sep=",", row.names=TRUE, 
+	    col.names=TRUE, quote=FALSE)
+```
+
+```{r TREM2hi_dge_volcano, dpi=300, fig.width=8, fig.height=6, warning=FALSE}
+dge$significant <- ifelse(dge$p_val_adj < 0.05,"Adj.P-value<0.05","n.s.")
+dge$genes <- rownames(dge)
+dge$show <- ifelse(dge$p_val_adj < 0.05, TRUE, FALSE)
+ 
+p = ggplot(dge, aes(avg_logFC, -log10(p_val+0.001))) +
+    geom_point(aes(col=significant), alpha=0.6) +
+    scale_color_manual(values=c("red", "black"))
+  
+  
+p+geom_label_repel(data=dge[dge$show,],
+                          aes(label=genes), family=fontTXT, size=8,
+                          force=1,
+# 			  xlim = c(2.5,3.0),
+ 			  ylim = c(3.5,5),
+                          nudge_y=0.5, direction = "y") + 
+    coord_cartesian(ylim = c(0, 6), clip = "off") +
+    theme_cowplot() +
+    xlab("avg log2FC") + ylab("-log10(pvalue + 0.001)") +
+    theme(text = element_text(family=fontTXT, size=20),
+	  legend.text = element_text(family=fontTXT, size=20),
+	  axis.text = element_text(family=fontTXT, size=20),
+    	  plot.margin = unit(c(0.3, 2.6, 0.1, 0.1), "cm"),
+	  legend.position = "bottom",
+	  legend.direction = "horizontal"
+	  )
+
+```
+
+
+We focus on hypoxia response. 
+```{r TREM2hi_hypoxia}
+TREM2hi.idx <- WhichCells(M, idents="TREM2hi-Mac")
+S2 <- M[, TREM2hi.idx] 
+S2$stim <- factor(c("WT_Low"="WT (Low signature)",
+		    "PHD2cKO_High"="PHD2cKO (High signature)")[S2$PHD2cKO_class2])
+S2$stim <- relevel(S2$stim, ref=grep("WT", levels(S2$stim), value=TRUE))
+S2 <- S2[,!is.na(S2$stim)]
+
+wHypoxia_stats <- t(sapply(levels(S2), function(cell) {
+				   cellIds <- WhichCells(S2, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=S2@meta.data$Hypoxia_response,
+						     gr=S2$stim)
+			   }))
+wHypoxia_stats <- as.data.frame(wHypoxia_stats)
+wHypoxia_stats$adjpval <- p.adjust(wHypoxia_stats$pvalue, method="fdr")
+wHypoxia_stats$significance <- tagSignif(wHypoxia_stats$adjpval)
+print(wHypoxia_stats)
+#Save it
+write.table(wHypoxia_stats, sep=",",
+ 	    file=paste0(DATADIR,"/TREM2hi_PHD2sign_Hypoxia_wilcox_stats.csv"),
+ 	    row.names=TRUE, col.names=NA)
+```
+
+We observe a high difference on this pathway using PROGENy. See violin plot below with 
+statistics.
+
+```{r vlnsplit_Hypoxia_TREM2hiMacPHD2sign, fig.width= 4, fig.height=6, warning=FALSE}
+RES <- wHypoxia_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+
+plotVln(SeuratObject = S2, gene=NULL, meta="Hypoxia_response",
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-2.7, pt.alpha=0.4) +
+	ylab("Scaled activity score") +
+      guides(fill= guide_legend(nrow=2, byrow=TRUE)) 
+```
+
+
+### Over-representation analysis
+Finally we conclude our analysis with an over-representation analysis of differentially expressed genes.
+
+```{r ORA_fx_aux}
+# Define auxiliary functions for ORA
+prepareGSC <- function(gmt_file, mmu2hsa) {
+ 	GSC <- getGmt(gmt_file)
+ 	GSC <- lapply(geneIds(GSC), function(z) unlist(sapply(z, function(j) mmu2hsa[[j]])))
+	GSC_t2g <- data.frame(term=unlist(sapply(names(GSC), function(k) rep(k, length(GSC[[k]])))),
+ 		     gene = unlist(GSC))
+
+	return(GSC_t2g)
+}
+
+enricher_saveExcel <- function(dge,res, fl) {
+	wb <- createWorkbook()
+	# TopTags
+	addWorksheet(wb, sheetName = "DiffExpr")
+	writeData(wb, sheet ="DiffExpr", x=as.data.frame(dge), rowNames=TRUE)
+	for(idx in names(res)) {
+		# GO terms
+		addWorksheet(wb, sheetName = idx)
+		writeData(wb, sheet =idx, x=res[[idx]]@result, 
+			  rowNames=FALSE)
+	}
+	saveWorkbook(wb, file =  fl, overwrite = TRUE)
+}
+
+enricher_saveCSV <- function(res, fl) {
+	for(idx in names(res)) {
+		fl2 <- gsub("ORA",paste0("ORA", "_", idx), fl)
+		# GO terms
+		write.table(as.data.frame(res[[idx]]@result), file=fl2, sep=",", 
+		    row.names=FALSE, col.names=TRUE, quote=FALSE)
+	}
+}
+```
+
+```{r ORA_libs}
+# Lib of hsa2mmu orthologs
+mmu2hsa <- readRDS("../data/Gene_annotation/hgnc2mgi_hsa2mmu.rds")
+
+# Prepare GSC as data.frames for enrichr()
+GO <- prepareGSC("../data/MSigDB/c5.bp.v7.0.symbols.gmt", mmu2hsa)
+H <- prepareGSC("../data/MSigDB/h.all.v6.2.symbols.gmt", mmu2hsa)
+```
+
+```{r ORA_test}
+# Get differentially expressed genes for ORA
+TREM2hi_dge <- rownames(dge)[dge$p_val_adj < 0.05]
+# TREM2hi_dge <- head(rownames(dge), 100)
+# Show summary
+cat("[INFO] selected genes for ORA:\n",file=stdout())
+cat("[INFO] \t Among which are differentially expressed genes (BH-adj pval <0.05):\n",file=stdout())
+print(table(dge[TREM2hi_dge, "p_val_adj"] < 0.05))
+cat("[INFO] \t Distribution of log2-fold-changes in selection:\n",file=stdout())
+print(summary(dge[TREM2hi_dge, "avg_logFC"]))
+cat("[INFO] \t Distribution of absolute log2-fold-changes in selection:\n",file=stdout())
+print(summary(abs(dge[TREM2hi_dge, "avg_logFC"])))
+
+set.seed(1234)
+GO.res <- enricher(TREM2hi_dge, TERM2GENE=GO, minGSSize = 10, maxGSSize = 200, pvalueCutoff = 0.05)
+set.seed(1234)
+H.res <- enricher(TREM2hi_dge, TERM2GENE=H, minGSSize = 10, maxGSSize = 200, pvalueCutoff = 0.05)
+```
+
+```{r ORA_bp_TREM2hi_PHD2cKOHigh_GOterms, fig.width=17, fig.height=10.5, dpi=300, warning=FALSE}
+res <- GO.res@result
+res$ID <- factor(res$ID, levels=rev(res$ID))
+res$Ann <- paste0(res$GeneRatio,": ",res$geneID)
+
+ggplot(head(res, 20), aes(y=-log10(p.adjust), x=ID)) + 
+ 	geom_bar(stat="identity", width=0.7, fill="grey") +
+# 	geom_point(size=7) +
+# 	geom_segment(aes(xend=ID), yend=0) + 
+# 	expand_limits(y=0) + 
+	geom_text(mapping=aes(y=0.01, x=ID, label=Ann), hjust=0, size=5.7) + 
+	theme_cowplot() +
+ 	geom_hline(yintercept = -log10(0.05), lty=2, alpha=0.5) + 
+ 	coord_flip() +
+	ylab("-log10(adjusted P-value)") +
+	theme(legend.position="bottom",
+	      legend.key.width=unit(1.5,"cm"),
+	      legend.title=element_text(family=fontTXT, size=16),
+	      legend.text=element_text(family=fontTXT, size=16),
+	      axis.title.y=element_blank(),
+	      axis.text.y=element_text(family=fontTXT, size=19),
+	      axis.text.x=element_text(family=fontTXT, size=20),
+	      axis.title.x=element_text(family=fontTXT, size=18))
+```
+
+
+```{r ORA_export}
+enricher_saveExcel(dge, res=list("GO"=GO.res, "Hallmarks"=H.res),
+		   fl = paste0(DATADIR,"/TREM2hi-Mac_PHD2cKO_High_ORA.xlsx"))
+
+enricher_saveCSV(res=list("GO"=GO.res, "Hallmarks"=H.res),
+		   fl = paste0(DATADIR,"/TREM2hi-Mac_PHD2cKO_High_ORA.csv"))
+```
+
+
+
+
 ## Conclusion
 
 > We have dissected PHD2cKO perturbation in all 5 classes of Macrophages previously described in
@@ -569,8 +899,8 @@ we were able to compare PHD2cKO and WT macrophages in the two conditions, and st
 by those most responding to the perturbation. We confirmed that PHD2cKO leads to hypoxia response.
 We also observed that Bnip3 is up-regulated among all macrophage classes (except for IFNIC,
 for which we do not have enough observations). In opposite, Spp1 over-expression upon PHD2cKO is
-specific of Trem2-foamy macrophages, suggesting that these are the source of Spp1 in atherosclerotic
-plaques.
+specific of TREM2hi macrophages, suggesting that these are the source of Spp1 in atherosclerotic
+plaques. PHD2cKO leads to apoptosis in TREM2hi macrophages.
 
 ## SessionInfo
 ```{r}

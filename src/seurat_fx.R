@@ -601,7 +601,8 @@ plotVln <- function(SeuratObject, gene=NULL, meta, stats, vlnsplit=TRUE, fontTXT
 	} else {
 		gg <- ggplot(dat,
 			     aes(x=cell, y=expr, fill=stim, colour=stim)) +
-			   geom_violin(width=1.0, scale="width") +
+			   geom_violin(width=1.0, scale="width", draw_quantiles = 0.5, alpha=0.3) +
+ 		   geom_jitter(size=1, shape=16, alpha=pt.alpha, position=position_jitterdodge(0.6)) +
 			   stat_summary(mapping=aes(colour=stim),
 					fun.data = give.n, geom = "text", fun.y = median,
 					size=4,

@@ -1,7 +1,0 @@
-pathway	pval	padj	ES	NES	nMoreExtreme	size	leadingEdge
-Collagens	0.0260223048327138	0.0431211498973306	0.473317808997647	1.55070504483924	13	31	Col3a1,Col5a3,Col15a1,Col28a1,Col18a1,Col27a1,Col5a1,Col1a1,Col5a2
-ECM Glycoproteins	0.0287474332648871	0.0431211498973306	-0.333106021922853	-1.42548525548449	13	115	Tinagl1,Fbln5,Wisp2,Cyr61,Smoc2,Thbs1,Nov,Igfbp4,Bmper,Mfge8,Mgp,Npnt,Ltbp1,Emilin2,Ctgf,Lama5,Smoc1,Thbs2,Aebp1,Slit2,Igfbp6,Pcolce
-ECM Regulators	0.234042553191489	0.280851063829787	-0.255274982368153	-1.12059439030636	109	139	Serpine2,Adamtsl5,Lox,Cd109,Mmp2,Timp2,Adamts1,Serpina1a,Mmp14,Serpine1,Adamts5,Timp4,Itih4,Serpinb1b,Serpinb5,Plod3,Masp1,Adamts16,Hyal2,Hyal1,Pappa2,Agt,Serpinb9,Serpinc1,Serpinb8,Ogfod1,Adam23,P4htm,Sulf2,Mmp11,Adam11,Kazald1,Cst3,Ogfod2
-ECM-affiliated Proteins	0.00754716981132075	0.0226415094339623	0.383051820129743	1.56593153037717	3	92	Plxnc1,Sema7a,Sdc3,Clec4a1,Plxdc1,Clec12a,Clec5a,Sema4d,Clec4d,Clec7a,Sema3c,Clec4e,C1qa,Clec4n,Ovgp1,C1qc,Clec4a2,C1qb,Clec4a3,Plxna2,Anxa2,Sema3a,Plxnd1,Clec2h,Sema4a,Fcna,C1qtnf6,Anxa6,Clec10a,Clec9a,Sema4c
-Proteoglycans	0.37199124726477	0.37199124726477	-0.349486059839933	-1.05477556564452	169	22	Podnl1,Ogn,Hapln4,Aspn,Bgn,Bcan
-Secreted Factors	0.00185185185185185	0.0111111111111111	0.357472061008238	1.59006393391062	0	160	Igf1,Angptl4,Cxcl14,Ccl3,Igf2,Cx3cl1,Pdgfb,Tgfb1,Ccl2,Tnf,Ccl4,Ccl12,Ccl11,Il16,Ccl5,Ebi3,Cxcl10,Il1rn,S100a1,Pf4,Ccl9,Ccl7,Cxcl2,Ccl6,Cxcl12,Tnfsf14,Ccl17,Fstl1,Fgf13,Fgf11,Tnfsf13,S100a8,S100a13,S100a16,Clcf1,Osm

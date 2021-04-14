@@ -55,6 +55,50 @@ Wirka <- readRDS("Wirka2019/data/M.rds")
 Zernecke <- readRDS("Zernecke2020/data/M.rds")
 ```
 
+### Reorder labels by shared annotations
+
+```{r}
+Kuijk_lvls <- levels(Kuijk)
+Wirka_lvls <- levels(Wirka)
+Zernecke_lvls <- levels(Zernecke)
+
+# Last is macrophage since murine presents several subsets while Wirka only one
+lvl_ord <- vector("character")
+lvl_ord <- c(lvl_ord, grep("Plasma", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, rev(grep("DC", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE)))
+lvl_ord <- c(lvl_ord, grep("-?Mac", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("Neutro", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("Mono", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("T(-| )[Cc]ell", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("B(-| )[Cc]ell", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("NK", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("Mast", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("EC|Endothelial", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("Fibroblast", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("Peri", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("SMC", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("Fibromyo", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+lvl_ord <- c(lvl_ord, grep("Neuro", c(Kuijk_lvls, Wirka_lvls, Zernecke_lvls), value=TRUE))
+
+Kuijk_lvls <- intersect(lvl_ord, Kuijk_lvls)
+Wirka_lvls <- intersect(lvl_ord, Wirka_lvls)
+Zernecke_lvls <- intersect(lvl_ord, Zernecke_lvls)
+
+
+#Sanity check
+stopifnot(all(levels(Kuijk) %in% Kuijk_lvls))
+stopifnot(all(levels(Wirka) %in% Wirka_lvls))
+stopifnot(all(levels(Zernecke) %in% Zernecke_lvls))
+
+#Reorder by shared idents
+Idents(Kuijk) <- factor(as.character(Idents(Kuijk)), levels=Kuijk_lvls)
+Idents(Wirka) <- factor(as.character(Idents(Wirka)), levels=Wirka_lvls)
+Idents(Zernecke) <- factor(as.character(Idents(Zernecke)), levels=Zernecke_lvls)
+
+```
+
+
+
 ### Plot
 
 ```{r alt_Fig1A, fig.width=7.5, fig.height=7}
@@ -67,10 +111,11 @@ scale_color_gradient(limits=c(-0.5, 2.5), low="lightgrey",high= "blue", breaks=c
 tm
 
 p2 <- DotPlot(Wirka, feature="PFKFB3", scale.min=0, scale.max=50) + ggtitle("Wirka") + 
-scale_color_gradient(limits=c(-0.5, 2.5), low="lightgrey",high= "blue", breaks=c(0, 1, 2)) + tm
+scale_color_gradient(limits=c(-0.5, 2.5), low="lightgrey",high= "blue", breaks=c(0, 1, 2)) + tm 
 
 p3 <- DotPlot(Zernecke, feature="Pfkfb3", scale.min=0, scale.max=50) + ggtitle("Zernecke") + 
-scale_color_gradient(limits=c(-0.5, 2.5), low="lightgrey",high= "blue", breaks=c(0, 1, 2)) + tm
+scale_color_gradient(limits=c(-0.5, 2.5), low="lightgrey",high= "blue", breaks=c(0, 1, 2)) + tm + 
+theme(plot.margin=unit(c(50,2,2,2),"mm"))
 
 leg <- get_legend(p3 + theme(legend.position="bottom") + 
 		  guides(colour= guide_colorbar(title="Average Expression",
@@ -81,16 +126,7 @@ leg <- get_legend(p3 + theme(legend.position="bottom") +
 					     nrow=1, byrow=TRUE)
 			 ))
 
-plot_grid(p2 + NoLegend(), p3 + NoLegend(), p1 + NoLegend(),
+plot_grid(p2 + NoLegend(), p1 + NoLegend(), p3 + NoLegend(),
 	  ggplot()+theme_void(), leg, 
 	  ncol = 3, rel_heights = c(0.8,0.2))
 ```
-
-
-
-### TRY
-```{r}
-# res <- apply(M@assays$RNA@counts[, 1:5], 2, function(b) which(apply(ALL@assays$RNA@counts==b,2,all)))
-
-```
-

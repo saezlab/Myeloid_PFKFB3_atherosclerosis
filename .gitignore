@@ -1,4 +1,3 @@
-./Analysis_invitro_bulk/*.html
-./Analysis_invitro_bulk/*_output/figures/*.tiff
-./Analysis_invivo_singlecell/*.html
-./Analysis_invivo_singlecell/*_output/figures/*.tiff
+*/*/*.html
+*/*/*/figures/*.tiff
+*/*/*/data/*.rds

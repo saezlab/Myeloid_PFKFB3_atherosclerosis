@@ -1,0 +1,443 @@
+---
+title: "Analysis invivo PFKFB3 - plaque cells from LDLrlysMCRE mice model"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Setup
+We define a random seed number for reproducibility, file structure for the output, 
+and load essential libraries
+
+### Environment
+```{r env}
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./LDLrlysMCRE-mice/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+knitr::opts_chunk$set(dpi=300)
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
+```
+
+
+### Load libraries
+```{r}
+suppressPackageStartupMessages(require(Seurat))
+suppressPackageStartupMessages(require(cowplot))
+suppressPackageStartupMessages(require(ggplot2))
+suppressPackageStartupMessages(require(purrr))
+suppressPackageStartupMessages(require(dplyr))
+suppressPackageStartupMessages(require(viper))
+suppressPackageStartupMessages(require(rcompanion))
+source("../src/graphics.R")
+source("../src/seurat_fx.R")
+source("../src/wilcox_fx.R")
+```
+
+## Load data
+Read the Seurat Object from the in-vivo analysis. We use the same annotation
+```{r load_seurat}
+readSeuratObject <- function(sobj) {
+	# Read 
+	if(file.exists(sobj)) {
+		S <- readRDS(sobj)
+	} else {
+		stop("ERROR: Seurat object does not exist.")
+	}
+	return(S)
+}
+```
+
+Read the SeuratObject with all plaque cells
+```{r}
+# Input data : from prev
+S <- readSeuratObject("../LDLrlysMCRE_clustering/02_identity_output/data/S.rds")
+S$Annotation.Level.1 <- Idents(S)
+```
+
+Read the subset of myeloid cells which were re-cluster in another iteration, annotated afterwards.
+```{r}
+M <- readSeuratObject("../LDLrlysMCRE_clustering/03_myeloidlineage_output/data/M.rds")
+M$Annotation.Level.2<- Idents(M)
+```
+
+
+## Subsetting data
+Since the latter is contained in the former, we use the same criteria for dropping out
+the cells from the latter in the former: Discard Lyz2+ from whole tissue.
+```{r}
+myeloid <- c("Megakaryocyte", "Thrombocyte", "Erythrocyte", "Mast cell",
+	     "Basophil", "Neutrophil", "Eosinophil", "Monocyte", "Macrophage")
+grep(paste(myeloid, collapse="|"), levels(S), value=TRUE)
+
+S <- S[, !Idents(S) %in% c("Mixed_Neutrophil-DC-Monocytes", "Macrophage", "n.a.")]
+```
+
+Finally we have two subsets of the cells:
+- Lyz2- cells: including fibroblasts, SMC, EC, T-cell and B-cell
+
+```{r show_Lyz2pos}
+# Classes
+levels(S)
+# Cell numbers
+table(S$Annotation.Level.1)
+```
+
+- Lyz2+ cells: Myeloid leukocytes.
+```{r show_Lyz2neg}
+# Classes
+levels(M)
+# Cell numbers
+table(M$Annotation.Level.2)
+```
+
+Note, doing so two clusters of cells are dropping from the analysis:
+- A small cluster with double marker expression of myeloid cells called "n.a." (not assigned).
+  Potentially those are doublets, but I couldn't identify them with regular methods because
+  they are very poor represented.
+- Myeloid proliferating cells (mixed of many cell types).
+
+
+In addition, we subset the data by condition. Actually the data contains two conditions,
+WT (control) mice and myeloid-PHD2cKO mice. We are mainly interested in the control since
+that PHD2cKO perturbation was profiled for other study. Thus we are reusing the control here.
+
+```{r}
+WT <- merge(subset(S, stim=="WT"), subset(M, stim=="WT"))
+WT$is_myeloid <- ifelse(is.na(WT$Annotation.Level.2), FALSE, TRUE)
+```
+
+```{r reorder}
+# Sort them by, 1st Macrophages, then the rest, finally the odd ones
+last_ids<- c("EC1", "EC2", "Fibroblast", "SMC")
+ids <- c(sort(grep("-Mac", levels(WT), value=TRUE)),
+	 setdiff(sort(grep("-Mac", levels(WT), value=TRUE, invert=TRUE)),
+		 last_ids),
+	 last_ids)
+Idents(WT) <- factor(as.character(Idents(WT)),
+		      levels=ids)
+# We show the total number of cells
+ncol(WT)
+# And the sample size of each group
+table(Idents(WT))
+```
+
+```{r LDLrlysMCRE_WT_Lyz2_ViolinPlots, fig.width=6, fig.height=5, warning=FALSE}
+DefaultAssay(WT) <- "RNA"
+plotVln(SeuratObject = WT, gene="Lyz2", meta=NULL,
+ 	stats=NULL,
+	vlnsplit = FALSE, fontTXT,  nCell.y=-0.3, pt.alpha=0.7) +
+        NoLegend()
+```
+
+## UMAP
+We have subset the data so we do a selection of variables, scaling etc for umap
+```{r}
+DefaultAssay(WT) <- "RNA"
+# WT <- NormalizeData(WT, verbose=FALSE)
+WT <- ScaleData(WT, verbose=FALSE)
+WT <- FindVariableFeatures(WT, 
+			   selection.method = "vst",
+			   nfeatures = 2000, verbose = FALSE)
+WT <- RunPCA(WT, npcs = 30, verbose = FALSE)
+# ElbowPlot(M.i)
+WT <- RunUMAP(WT, reduction = "pca", dims = 1:15)
+```
+
+```{r LDLrlysMCRE-mice_WT_UMAP, fig.width=7, fig.height=5}
+p1 <- DimPlot(WT, label=TRUE, repel = TRUE)
+print(p1)
+```
+## Dissection of hypoxia response
+
+### Dorothea focused on Hif1a
+We calculate Hif1a transcription factor activities using dorothea. 
+
+```{r dorothea_hif1a, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
+# load regulons
+df2regulon <- function(df, regulator_name="tf") {
+  regulon = df %>% split(.[regulator_name]) %>% map(function(dat) {
+    targets = setNames(dat$mor, dat$target)
+    likelihood = dat$likelihood
+    list(tfmode = targets, likelihood = likelihood)
+  })
+  return(regulon)
+}
+
+regulon.df <- read.table("../data/Prior/dorothea_regulon_mouse_v1.csv", sep=",", 
+			 header=TRUE, stringsAsFactors = FALSE)
+regul <- df2regulon(df=regulon.df)
+
+# Calculate TF activities
+TF <- viper(eset = as.matrix(WT@assays$RNA@data), regulon = regul,
+              nes = T, minsize = 4,
+              eset.filter = F, adaptive.size = F,
+	      verbose=FALSE)
+  
+# Add them as metadata
+stopifnot(colnames(WT) == colnames(TF))
+WT$Hif1a_activity <- TF["Hif1a",]
+rm(TF)
+```
+
+```{r Hif1a_strata}
+WT$Hif1a_strata <- NA
+for(cell in levels(WT)) {
+	idx <- WhichCells(WT, idents=cell)
+	Q3 <- quantile(WT$Hif1a_activity[idx], probs=0.75)
+	WT$Hif1a_strata[idx] <- ifelse(WT$Hif1a_activity[idx] > Q3,
+					 "High_Hif1a", "Low_Hif1a")
+}
+WT$Hif1a_strata <- factor(WT$Hif1a_strata, levels=c("Low_Hif1a", "High_Hif1a"))
+```
+
+### PROGENy focused on hypoxia response
+We calculate a score of hypoxia response using progeny as well.
+
+```{r vln_progeny_hypoxia, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
+### Progeny ####
+progeny.mat <- read.table("../data/Prior/progeny_matrix_mouse_v1.txt",sep=",",header=TRUE)
+rownames(progeny.mat) <- progeny.mat$X
+progeny.mat <- progeny.mat[which(colnames(progeny.mat)!="X")]
+progeny.mat <- as.matrix(progeny.mat)
+
+common <- intersect(rownames(WT), rownames(progeny.mat))
+  
+prog <- t(as.matrix(WT@assays$RNA@data[common,])) %*% progeny.mat[common,]
+rn <- rownames(prog)
+prog <- apply(prog,2,scale)
+rownames(prog) <- rn
+prog <- t(prog)
+  
+stopifnot(colnames(WT) == colnames(prog))
+WT$Hypoxia_response <- prog["Hypoxia",]
+rm(common,prog)
+```
+
+```{r hypoxia_withinpop_scaled}
+WT$Hypoxia_scaled <- NA
+for(cell in levels(WT)) {
+	idx <- WhichCells(WT, idents=cell)
+	WT$Hypoxia_scaled[idx] <- scale(WT$Hypoxia_response[idx])
+}
+```
+
+```{r hypoxia_strata}
+WT$Hypoxia_strata <- NA
+for(cell in levels(WT)) {
+	idx <- WhichCells(WT, idents=cell)
+	Q3 <- quantile(WT$Hypoxia_response[idx], probs=0.75)
+	WT$Hypoxia_strata[idx] <- ifelse(WT$Hypoxia_response[idx] > Q3,
+					 "High_hypoxia", "Low_hypoxia")
+}
+WT$Hypoxia_strata<- factor(WT$Hypoxia_strata, levels=c("Low_hypoxia", "High_hypoxia"))
+```
+
+## Results
+
+```{r gene}
+gene <- "Pfkfb3"
+genes <- paste0("Pfkfb",1:4) 
+```
+
+### Pfkfb3
+```{r LDLrlysMCRE-mice_WT_PFKFB3_FeaturePlots, fig.width=6, fig.height=5}
+p2 <- FeaturePlot(WT, features=gene, pt.size = 0.3)
+print(p2)
+```
+
+```{r LDLrlysMCRE-mice_WT_PFKFB3_UMAPFeaturePlots, fig.width=14, fig.height=5}
+plot_grid(p1,p2, rel_widths = c(0.55,0.45))
+```
+
+```{r LDLrlysMCRE-mice_WT_PFKFB3_DotPlots, fig.width=5, fig.height=5}
+DotPlot(WT, features=gene) + 
+	xlab("") + ylab("Cell type")
+```
+
+```{r LDLrlysMCRE-mice_WT_PFKFB3_ViolinPlots, fig.width=6, fig.height=5, warning=FALSE}
+# VlnPlot(WT, features=gene, pt.size=0.7) + NoLegend()
+plotVln(SeuratObject = WT, gene="Pfkfb3", meta=NULL,
+	stats=NULL,
+	vlnsplit = FALSE, fontTXT,  nCell.y=-0.1, pt.alpha=0.8) +
+        NoLegend()
+```
+
+### Pfkfb isoforms
+```{r LDLrlysMCRE-mice_WT_PFKFBiso_FeaturePlots, fig.width=7.5, fig.height=6}
+p2 <- FeaturePlot(WT, features=genes, pt.size = 0.3)
+print(p2)
+```
+
+```{r LDLrlysMCRE-mice_WT_PFKFBiso_UMAPFeaturePlots, fig.width=14, fig.height=5}
+plot_grid(p1,p2, rel_widths = c(0.53,0.47))
+```
+
+```{r LDLrlysMCRE-mice_WT_PFKFBiso_DotPlots}
+DotPlot(WT, features=genes) + 
+	xlab("Pfkfb isoforms") + ylab("Cell type")
+```
+
+```{r LDLrlysMCRE-mice_WT_PFKFBiso_ViolinPlots, fig.width=10, fig.height=10, warning=FALSE}
+# VlnPlot(WT, features=genes, ncol=length(genes)/2, pt.size=0.7)
+plot_grid(plotlist=sapply(genes,function(z) {
+		plotVln(SeuratObject = WT, gene=z, meta=NULL,
+		  stats=NULL,
+		  vlnsplit = FALSE, fontTXT,  nCell.y=-0.1, pt.alpha=0.8) +
+			  theme(axis.text.x=element_text(size=16)) + 
+			  NoLegend()
+		 }, simplify=FALSE), ncol = length(genes)/2)
+```
+
+
+### Pfkfb3 High Hypoxia/Hif1a
+
+#### Hypoxia
+```{r LDLrlysMCRE-mice_WThypoxiaHighvsLow_PFKFB3_stats}
+WT$stim <- WT$Hypoxia_strata
+wPfkfb3_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["Pfkfb3", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPfkfb3_stats <- as.data.frame(wPfkfb3_stats)
+wPfkfb3_stats$adjpval <- p.adjust(wPfkfb3_stats$pvalue, method="fdr")
+wPfkfb3_stats$significance <- tagSignif(wPfkfb3_stats$adjpval)
+print(wPfkfb3_stats)
+
+RES <- wPfkfb3_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+
+```{r LDLrlysMCRE-mice_WThypoxiaHighvsLow_PFKFB3, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="Pfkfb3", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE)) 
+
+```
+
+#### Hif1a
+
+```{r LDLrlysMCRE-mice_WTHif1aHighvsLow_PFKFB3_stats}
+WT$stim <- WT$Hif1a_strata
+wPfkfb3_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["Pfkfb3", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPfkfb3_stats <- as.data.frame(wPfkfb3_stats)
+wPfkfb3_stats$adjpval <- p.adjust(wPfkfb3_stats$pvalue, method="fdr")
+wPfkfb3_stats$significance <- tagSignif(wPfkfb3_stats$adjpval)
+print(wPfkfb3_stats)
+
+RES <- wPfkfb3_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+```{r LDLrlysMCRE-mice_WTHif1aHighvsLow_PFKFB3, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="Pfkfb3", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE))
+
+```
+
+### Pfkfb4 High Hypoxia/Hif1a
+
+
+#### Hypoxia
+```{r LDLrlysMCRE-mice_WThypoxiaHighvsLow_PFKFB4_stats}
+WT$stim <- WT$Hypoxia_strata
+wPfkfb4_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["Pfkfb4", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPfkfb4_stats <- as.data.frame(wPfkfb4_stats)
+wPfkfb4_stats$adjpval <- p.adjust(wPfkfb4_stats$pvalue, method="fdr")
+wPfkfb4_stats$significance <- tagSignif(wPfkfb4_stats$adjpval)
+print(wPfkfb4_stats)
+
+RES <- wPfkfb4_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+
+```{r LDLrlysMCRE-mice_WThypoxiaHighvsLow_PFKFB4, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="Pfkfb4", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE)) 
+
+```
+
+#### Hif1a
+```{r LDLrlysMCRE-mice_WTHif1aHighvsLow_PFKFB4_stats}
+WT$stim <- WT$Hif1a_strata
+wPfkfb4_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["Pfkfb4", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPfkfb4_stats <- as.data.frame(wPfkfb4_stats)
+wPfkfb4_stats$adjpval <- p.adjust(wPfkfb4_stats$pvalue, method="fdr")
+wPfkfb4_stats$significance <- tagSignif(wPfkfb4_stats$adjpval)
+print(wPfkfb4_stats)
+
+RES <- wPfkfb4_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+
+```{r LDLrlysMCRE-mice_WTHif1aHighvsLow_PFKFB4, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="Pfkfb4", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE)) 
+
+```
+
+## Conclusion
+
+> PFKFB1/2 is not expressed in plaque cells. 
+PFKFB3 is expressed mainly by Mature-DC in atherosclerotic plaques. 
+PFKFB4 is expressed mainly by Inflammatory and trem2-foamy Macrophages and MoDC.
+However no differences in PFKFB3/4 expression are observed between cells undergoing 
+high vs low hypoxia response (stratified by the 3rd quartile of hypoxia response), 
+IFNIC-Mac and Mature-DC not tested because low number of cells).
+
+## Save the Seurat Object
+```{r seurat_obj}
+saveRDS(WT, paste0(DATADIR,"/M.rds"));
+```
+
+## SessionInfo
+```{r}
+sessionInfo()
+
+{                                                                                                                                                                                                           
+sink(file=paste0(OUTDIR,"/sessionInfo.txt"))
+print(sessionInfo())
+sink()
+}
+```

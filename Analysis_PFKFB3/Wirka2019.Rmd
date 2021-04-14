@@ -1,0 +1,404 @@
+---
+title: "Analysis invivo PFKFB3 - human plaque cells from Wirka et al 2019"
+author: "Javier Perales-Patón - javier.perales@bioquant.uni-heidelberg.de - ORCID: 0000-0003-0780-6683" 
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Setup
+We define a random seed number for reproducibility, file structure for the output, 
+and load essential libraries
+
+### Environment
+```{r env}
+# Seed number
+set.seed(1234)
+# Output directory
+OUTDIR <- "./Wirka2019/"
+if(!dir.exists(OUTDIR)) dir.create(OUTDIR);
+
+# Figures
+FIGDIR <- paste0(OUTDIR, "/figures/")
+knitr::opts_chunk$set(fig.path=FIGDIR)
+knitr::opts_chunk$set(dev=c('png','tiff'))
+knitr::opts_chunk$set(dpi=300)
+# Data
+DATADIR <- paste0(OUTDIR, "/data/")
+if(!dir.exists(DATADIR)) dir.create(DATADIR);
+```
+
+
+### Load libraries
+```{r}
+suppressPackageStartupMessages(require(Seurat))
+suppressPackageStartupMessages(require(cowplot))
+suppressPackageStartupMessages(require(ggplot2))
+suppressPackageStartupMessages(require(purrr))
+suppressPackageStartupMessages(require(dplyr))
+suppressPackageStartupMessages(require(viper))
+suppressPackageStartupMessages(require(rcompanion))
+source("../src/graphics.R")
+source("../src/seurat_fx.R")
+source("../src/wilcox_fx.R")
+```
+
+We start with the processed data downloaded from GEO and the metadata information.
+```{r}
+cnt_file <- gzfile("../data/Wirka_etal/GSE131778_human_coronary_scRNAseq_wirka_et_al_GEO.txt.gz", "rt")
+mat <- read.table(cnt_file, sep="\t", header=TRUE, stringsAsFactors = FALSE)
+meta <- read.table("../data/Wirka_etal/Wirka_metadata.csv", sep=",", header=TRUE, stringsAsFactors = FALSE)
+
+stopifnot(all(meta$X %in% colnames(mat)))
+
+#NOTE: Standarization : add PFKFB1
+if("PFKFB1" %in% rownames(mat)) {
+	warning("WARN : Virtually added 'PFKFB1' gene as zero expression\n")
+	mat <- rbind(mat, "PFKFB1"=rep(0, ncol(mat)))
+}
+
+## Reformat
+rownames(meta) <- meta$X
+meta <- meta[,colnames(meta)!="X"]
+# Add sample
+meta$orig <- sapply(rownames(meta), function(z) strsplit(z,split="\\.")[[1]][2])
+```
+
+```{r sobj}
+S <- CreateSeuratObject(counts=as.matrix(mat), project="Wirka_Human_8n",
+			assay = "RNA", min.cells =3, min.features = 500,
+			meta.data=meta)
+Idents(S) <- S@meta.data$ident
+table(Idents(S))
+rm(mat, meta)
+```
+
+## Normalize data
+
+```{r}
+S <- NormalizeData(S)
+S <- ScaleData(S)
+```
+
+Standarization as our own data
+```{r}
+# Remove odd clusters named as numbers
+S <- S[, grepl("[a-z]",Idents(S))]
+S$Annotation.Level.2 <- Idents(S)
+# All are WT
+WT <- S
+# Myeloids
+myeloid <- c("Megakaryocyte", "Thrombocyte", "Erythrocyte", "Mast cell",
+	     "Basophil", "Neutrophil", "Eosinophil", "Monocyte", "Macrophage")
+myeloid_IN <- grep(paste(myeloid, collapse="|"), levels(WT), value=TRUE)
+
+WT$is_myeloid <- sapply(Idents(WT), function(z) ifelse(z%in%myeloid_IN, TRUE, FALSE))
+WT$stim <- "WT"
+rm(S)
+```
+
+```{r reorder}
+# Sort them by, 1st Macrophages, then the rest, finally the odd ones
+ids <- c(sort(grep("-?Mac", levels(WT), value=TRUE)),
+	 sort(grep("-?Mac", levels(WT), value=TRUE, invert=TRUE)))
+Idents(WT) <- factor(as.character(Idents(WT)),
+		      levels=ids)
+# We show the total number of cells
+ncol(WT)
+# And the sample size of each group
+table(Idents(WT))
+```
+
+
+## UMAP
+We have subset the data so we do a selection of variables, scaling etc for umap
+```{r}
+DefaultAssay(WT) <- "RNA"
+# WT <- NormalizeData(WT, verbose=FALSE)
+WT <- ScaleData(WT, verbose=FALSE)
+WT <- FindVariableFeatures(WT, 
+			   selection.method = "vst",
+			   nfeatures = 2000, verbose = FALSE)
+WT <- RunPCA(WT, npcs = 30, verbose = FALSE)
+# ElbowPlot(M.i)
+WT <- RunUMAP(WT, reduction = "pca", dims = 1:15)
+```
+
+```{r Wirka2019_WT_UMAP, fig.width=7, fig.height=5}
+p1 <- DimPlot(WT, label=TRUE, repel = TRUE)
+print(p1)
+```
+
+## Dissection of hypoxia response
+
+### Dorothea focused on HIF1A
+We calculate HIF1A transcription factor activities using dorothea. 
+
+```{r dorothea_hif1a, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
+df2regulon <- function(df, regulator_name="tf") {
+  regulon = df %>% split(.[regulator_name]) %>% map(function(dat) {
+    targets = setNames(dat$mor, dat$target)
+    likelihood = dat$likelihood
+    list(tfmode = targets, likelihood = likelihood)
+  })
+  return(regulon)
+}
+
+regulon.df <- read.table("../data/Prior/dorothea_regulon_human_v1.txt", sep=",", header=TRUE, stringsAsFactors = FALSE)
+regul <- df2regulon(df=regulon.df)
+
+# Calculate TF activities
+TF <- viper(eset = as.matrix(WT@assays$RNA@data), regulon = regul,
+              nes = T, method = "none", minsize = 4,
+              eset.filter = F, adaptive.size = F)
+ 
+# Add them as metadata
+stopifnot(colnames(WT) == colnames(TF))
+WT$HIF1A_activity <- TF["HIF1A",]
+rm(TF)
+```
+
+```{r HIF1A_strata}
+WT$HIF1A_strata <- NA
+for(cell in levels(WT)) {
+	idx <- WhichCells(WT, idents=cell)
+	Q3 <- quantile(WT$HIF1A_activity[idx], probs=0.75)
+	WT$HIF1A_strata[idx] <- ifelse(WT$HIF1A_activity[idx] > Q3,
+					 "High_HIF1A", "Low_HIF1A")
+}
+WT$HIF1A_strata <- factor(WT$HIF1A_strata, levels=c("Low_HIF1A", "High_HIF1A"))
+```
+
+### PROGENy focused on hypoxia response
+We calculate a score of hypoxia response using progeny as well.
+
+```{r vln_progeny_hypoxia, fig.width=6, fig.height=7, dpi=300, warning=FALSE}
+### Progeny ####
+progeny.mat <- read.table("../data/Prior/progeny_matrix_human_v1.csv",sep=",",header=TRUE)
+rownames(progeny.mat) <- progeny.mat$X
+progeny.mat <- progeny.mat[which(colnames(progeny.mat)!="X")]
+progeny.mat <- as.matrix(progeny.mat)
+
+common <- intersect(rownames(WT), rownames(progeny.mat))
+  
+prog <- t(as.matrix(WT@assays$RNA@data[common,])) %*% progeny.mat[common,]
+rn <- rownames(prog)
+prog <- apply(prog,2,scale)
+rownames(prog) <- rn
+prog <- t(prog)
+  
+stopifnot(colnames(WT) == colnames(prog))
+WT$Hypoxia_response <- prog["Hypoxia",]
+rm(common,prog)
+```
+
+```{r hypoxia_withinpop_scaled}
+WT$Hypoxia_scaled <- NA
+for(cell in levels(WT)) {
+	idx <- WhichCells(WT, idents=cell)
+	WT$Hypoxia_scaled[idx] <- scale(WT$Hypoxia_response[idx])
+}
+```
+
+```{r hypoxia_strata}
+WT$Hypoxia_strata <- NA
+for(cell in levels(WT)) {
+	idx <- WhichCells(WT, idents=cell)
+	Q3 <- quantile(WT$Hypoxia_response[idx], probs=0.75)
+	WT$Hypoxia_strata[idx] <- ifelse(WT$Hypoxia_response[idx] > Q3,
+					 "High_hypoxia", "Low_hypoxia")
+}
+WT$Hypoxia_strata<- factor(WT$Hypoxia_strata, levels=c("Low_hypoxia", "High_hypoxia"))
+```
+
+## Results
+```{r gene}
+gene <- "PFKFB3"
+genes <- paste0("PFKFB",1:4) 
+genes <- intersect(genes, rownames(WT))
+```
+
+### PFKFB3
+```{r Wirka2019_WT_PFKFB3_FeaturePlots, fig.width=6, fig.height=5}
+p2 <- FeaturePlot(WT, features=gene, pt.size = 0.3)
+print(p2)
+```
+
+```{r Wirka2019_WT_PFKFB3_UMAPFeaturePlots, fig.width=14, fig.height=5}
+plot_grid(p1,p2, rel_widths = c(0.55,0.45))
+```
+
+```{r Wirka2019_WT_PFKFB3_DotPlots, fig.width=5, fig.height=5}
+DotPlot(WT, features=gene) + 
+	xlab("") + ylab("Cell type")
+```
+
+```{r Wirka2019_WT_PFKFB3_ViolinPlots, fig.width=6, fig.height=5, warning=FALSE}
+# VlnPlot(WT, features=gene, pt.size=0.7) + NoLegend()
+plotVln(SeuratObject = WT, gene="PFKFB3", meta=NULL,
+ 	stats=NULL,
+	vlnsplit = FALSE, fontTXT,  nCell.y=-0.2, pt.alpha=0.8) +
+        NoLegend()
+```
+
+### PFKFB isoforms
+```{r Wirka2019_WT_PFKFBiso_FeaturePlots, fig.width=7.5, fig.height=6}
+p2 <- FeaturePlot(WT, features=genes, pt.size = 0.3)
+print(p2)
+```
+
+```{r Wirka2019_WT_PFKFBiso_UMAPFeaturePlots, fig.width=14, fig.height=5}
+plot_grid(p1,p2, rel_widths = c(0.53,0.47))
+```
+
+```{r Wirka2019_WT_PFKFBiso_DotPlots}
+DotPlot(WT, features=genes) + 
+	xlab("PFKFB isoforms") + ylab("Cell type")
+```
+
+```{r Wirka2019_WT_PFKFBiso_ViolinPlots, fig.width=10, fig.height=10, warning=FALSE}
+# VlnPlot(WT, features=genes, ncol=length(genes)/2, pt.size=0.7)
+plot_grid(plotlist=sapply(genes,function(z) {
+		plotVln(SeuratObject = WT, gene=z, meta=NULL,
+		  stats=NULL,
+		  vlnsplit = FALSE, fontTXT,  nCell.y=-0.1, pt.alpha=0.8) +
+			  theme(axis.text.x=element_text(size=16)) + 
+			  NoLegend()
+		 }, simplify=FALSE), ncol = ceiling(length(genes)/2))
+```
+
+
+### PFKFB3 High Hypoxia/HIF1A
+
+#### Hypoxia
+```{r Wirka2019_WThypoxiaHighvsLow_PFKFB3_stats}
+WT$stim <- WT$Hypoxia_strata
+wPFKFB3_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["PFKFB3", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPFKFB3_stats <- as.data.frame(wPFKFB3_stats)
+wPFKFB3_stats$adjpval <- p.adjust(wPFKFB3_stats$pvalue, method="fdr")
+wPFKFB3_stats$significance <- tagSignif(wPFKFB3_stats$adjpval)
+print(wPFKFB3_stats)
+
+RES <- wPFKFB3_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+
+```{r Wirka2019_WThypoxiaHighvsLow_PFKFB3, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="PFKFB3", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE)) 
+
+```
+
+#### HIF1A
+
+```{r Wirka2019_WTHIF1AHighvsLow_PFKFB3_stats}
+WT$stim <- WT$HIF1A_strata
+wPFKFB3_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["PFKFB3", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPFKFB3_stats <- as.data.frame(wPFKFB3_stats)
+wPFKFB3_stats$adjpval <- p.adjust(wPFKFB3_stats$pvalue, method="fdr")
+wPFKFB3_stats$significance <- tagSignif(wPFKFB3_stats$adjpval)
+print(wPFKFB3_stats)
+
+RES <- wPFKFB3_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+```{r Wirka2019_WTHIF1AHighvsLow_PFKFB3, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="PFKFB3", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE))
+
+```
+
+### PFKFB4 High Hypoxia/HIF1A
+
+
+#### Hypoxia
+```{r Wirka2019_WThypoxiaHighvsLow_PFKFB4_stats}
+WT$stim <- WT$Hypoxia_strata
+wPFKFB4_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["PFKFB4", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPFKFB4_stats <- as.data.frame(wPFKFB4_stats)
+wPFKFB4_stats$adjpval <- p.adjust(wPFKFB4_stats$pvalue, method="fdr")
+wPFKFB4_stats$significance <- tagSignif(wPFKFB4_stats$adjpval)
+print(wPFKFB4_stats)
+
+RES <- wPFKFB4_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+
+```{r Wirka2019_WThypoxiaHighvsLow_PFKFB4, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="PFKFB4", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE)) 
+
+```
+
+#### HIF1A
+```{r Wirka2019_WTHIF1AHighvsLow_PFKFB4_stats}
+WT$stim <- WT$HIF1A_strata
+wPFKFB4_stats <- t(sapply(levels(WT), function(cell) {
+				   cellIds <- WhichCells(WT, idents=cell)
+				   # The test
+				   wilcox.test_stats(xy=WT@assays$RNA@data["PFKFB4", cellIds],
+						     gr=WT$stim[cellIds])
+			   }))
+wPFKFB4_stats <- as.data.frame(wPFKFB4_stats)
+wPFKFB4_stats$adjpval <- p.adjust(wPFKFB4_stats$pvalue, method="fdr")
+wPFKFB4_stats$significance <- tagSignif(wPFKFB4_stats$adjpval)
+print(wPFKFB4_stats)
+
+RES <- wPFKFB4_stats[, c("r", "significance")]
+RES$r <- format(round(RES$r, 2), nsmall=2)
+colnames(RES)[ncol(RES)] <- ""
+```
+
+
+```{r Wirka2019_WTHIF1AHighvsLow_PFKFB4, fig.width=10, fig.height=7, warning=FALSE}
+plotVln(SeuratObject = WT, gene="PFKFB4", meta=NULL,
+	stats=RES,
+	vlnsplit = TRUE, fontTXT,  nCell.y=-0.1, pt.alpha=0.4) +
+      guides(fill= guide_legend(nrow=1, byrow=TRUE)) 
+
+```
+
+## Save the Seurat Object
+```{r seurat_obj}
+saveRDS(WT, paste0(DATADIR,"/M.rds"));
+```
+
+## SessionInfo
+```{r}
+sessionInfo()
+
+{                                                                                                                                                                                                           
+sink(file=paste0(OUTDIR,"/sessionInfo.txt"))
+print(sessionInfo())
+sink()
+}
+```

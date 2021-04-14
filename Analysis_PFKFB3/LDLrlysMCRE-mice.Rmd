@@ -140,6 +140,15 @@ plotVln(SeuratObject = WT, gene="Lyz2", meta=NULL,
         NoLegend()
 ```
 
+We repeat same plot but w/o dots (observations)
+```{r LDLrlysMCRE_WT_Lyz2_ViolinPlots_woDots, fig.width=6, fig.height=5, warning=FALSE}
+DefaultAssay(WT) <- "RNA"
+plotVln(SeuratObject = WT, gene="Lyz2", meta=NULL,
+ 	stats=NULL,
+	vlnsplit = FALSE, fontTXT,  nCell.y=-0.3, pt.alpha=0) +
+        NoLegend()
+```
+
 ## UMAP
 We have subset the data so we do a selection of variables, scaling etc for umap
 ```{r}

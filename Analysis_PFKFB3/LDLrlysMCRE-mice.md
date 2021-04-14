@@ -211,6 +211,18 @@ plotVln(SeuratObject = WT, gene="Lyz2", meta=NULL,
 
 ![](./LDLrlysMCRE-mice//figures/LDLrlysMCRE_WT_Lyz2_ViolinPlots-1.png)<!-- -->
 
+We repeat same plot but w/o dots (observations)
+
+``` r
+DefaultAssay(WT) <- "RNA"
+plotVln(SeuratObject = WT, gene="Lyz2", meta=NULL,
+    stats=NULL,
+    vlnsplit = FALSE, fontTXT,  nCell.y=-0.3, pt.alpha=0) +
+        NoLegend()
+```
+
+![](./LDLrlysMCRE-mice//figures/LDLrlysMCRE_WT_Lyz2_ViolinPlots_woDots-1.png)<!-- -->
+
 ## UMAP
 
 We have subset the data so we do a selection of variables, scaling etc
@@ -232,26 +244,26 @@ WT <- RunUMAP(WT, reduction = "pca", dims = 1:15)
     ## To use Python UMAP via reticulate, set umap.method to 'umap-learn' and metric to 'correlation'
     ## This message will be shown once per session
 
-    ## 08:53:06 UMAP embedding parameters a = 0.9922 b = 1.112
+    ## 11:17:48 UMAP embedding parameters a = 0.9922 b = 1.112
 
-    ## 08:53:06 Read 1561 rows and found 15 numeric columns
+    ## 11:17:48 Read 1561 rows and found 15 numeric columns
 
-    ## 08:53:06 Using Annoy for neighbor search, n_neighbors = 30
+    ## 11:17:48 Using Annoy for neighbor search, n_neighbors = 30
 
-    ## 08:53:06 Building Annoy index with metric = cosine, n_trees = 50
+    ## 11:17:48 Building Annoy index with metric = cosine, n_trees = 50
 
     ## 0%   10   20   30   40   50   60   70   80   90   100%
 
     ## [----|----|----|----|----|----|----|----|----|----|
 
     ## **************************************************|
-    ## 08:53:06 Writing NN index file to temp file /tmp/Rtmp0KvllQ/file4e5f3fa29cc0
-    ## 08:53:06 Searching Annoy index using 1 thread, search_k = 3000
-    ## 08:53:06 Annoy recall = 100%
-    ## 08:53:06 Commencing smooth kNN distance calibration using 1 thread
-    ## 08:53:07 Initializing from normalized Laplacian + noise
-    ## 08:53:07 Commencing optimization for 500 epochs, with 58350 positive edges
-    ## 08:53:10 Optimization finished
+    ## 11:17:48 Writing NN index file to temp file /tmp/Rtmp8U9Z1L/file19914bb3592
+    ## 11:17:48 Searching Annoy index using 1 thread, search_k = 3000
+    ## 11:17:49 Annoy recall = 100%
+    ## 11:17:49 Commencing smooth kNN distance calibration using 1 thread
+    ## 11:17:49 Initializing from normalized Laplacian + noise
+    ## 11:17:49 Commencing optimization for 500 epochs, with 58350 positive edges
+    ## 11:17:52 Optimization finished
 
 ``` r
 p1 <- DimPlot(WT, label=TRUE, repel = TRUE)
